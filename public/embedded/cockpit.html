@@ -1,0 +1,1870 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>经营驾驶舱 · Token Factory</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://unpkg.com/react@18/umd/react.development.js" crossorigin></script>
+<script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js" crossorigin></script>
+<script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+<style>
+  body { font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Helvetica Neue", Helvetica, Arial, sans-serif; -webkit-font-smoothing: antialiased; }
+  .pulse-red { animation: pulse-red 1.6s ease-in-out infinite; }
+  @keyframes pulse-red {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.55); }
+    50%      { box-shadow: 0 0 0 6px rgba(239, 68, 68, 0); }
+  }
+  .flash-green { animation: flash-green 2.4s ease-out; }
+  @keyframes flash-green {
+    0%   { background: rgba(16, 185, 129, 0.35); }
+    100% { background: rgba(16, 185, 129, 0); }
+  }
+  .scrollbar-thin::-webkit-scrollbar { height: 6px; width: 6px; }
+  .scrollbar-thin::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 3px; }
+</style>
+</head>
+<body>
+<div id="root"></div>
+
+<script type="text/babel">
+const { useState, useEffect, useRef, useMemo } = React;
+
+/* ============================================================
+   数据 — 全静态，会上演示用
+   ============================================================ */
+
+// 客户名单 (5 条 — 风险默认排序)
+const CUSTOMERS = [
+  { id: 'zj-gov',    name: '浙江政务云',   type: 'JV',   yearOrder: '5 亿',  usagePct: 90, sla: 99.93, settle: '应分成 ¥41 万', status: 'red',    note: '合约 90% · 预计 18h 后爆仓' },
+  { id: 'ncb',       name: '星河银行', type: '订阅', yearOrder: '10 亿', usagePct: 81, sla: 99.97, settle: '应收 ¥73 万',   status: 'red',    note: '昨日 SLA 违约 1 次' },
+  { id: 'some-saas', name: '某 SaaS 厂商', type: '订阅', yearOrder: '2 亿',  usagePct: 15, sla: 99.99, settle: '',              status: 'yellow', note: '7 日用量 ↓42% · 可能流失' },
+  { id: 'pufa',      name: '浦发银行',     type: 'JV',   yearOrder: '15 亿', usagePct: 42, sla: 99.99, settle: '应分成 ¥38 万', status: 'normal', note: '正常' },
+  { id: 'sh-gov',    name: '上海政务',     type: 'JV',   yearOrder: '8 亿',  usagePct: 56, sla: 99.95, settle: '应分成 ¥22 万', status: 'normal', note: '正常' },
+];
+
+// 类型动作集 — JV 隐藏"限流"
+function actionsForCustomer(c) {
+  const base = c.type === 'JV'
+    ? ['扩容草稿', '生成月度结算', '主权审计', '致歉补偿']
+    : ['扩容草稿', 'VIP 提档', '限流', '致歉补偿', '谈续约'];
+  // 风险态额外动作
+  if (c.status === 'red')    return [...base, '诊断 →2'];
+  if (c.status === 'yellow') return [...base, '诊断 →2'];
+  return base;
+}
+
+// Hero strip
+const HERO_BASE = {
+  revenue: '¥8.3 亿',  revenueTrend: '+12%',
+  delivered: '12.7B',  quota: '/18.9B',
+  completion: '67%',   completionNote: 'on pace',
+  yellow: 8,
+  mau: '12.4 万',      mauTrend: '+3.2%',
+};
+
+// 下游 C 端汇总
+const DOWNSTREAM = {
+  mau: '12.4 万',
+  conversion: '3.2%',
+  arpu: '¥87',
+  topSources: [
+    { name: '政务云',     mau: '4.1 万', pct: 100 },
+    { name: '浦发钱包',   mau: '3.8 万', pct: 92  },
+    { name: '某金融SaaS', mau: '2.1 万', pct: 51  },
+  ],
+  rpm: '¥23,411',
+  spark: [3, 5, 7, 9, 12, 15, 14, 11, 8, 6, 4, 3, 5, 8, 11, 13],
+};
+
+// 今日要打的电话
+const TODOS_INIT = [
+  { id: 't1', customer: '浙江政务云',   text: '合约 90% · 建议谈续约扩容',     target: 'p3', preset: 'expand' },
+  { id: 't2', customer: '某 SaaS 厂商', text: '用量骤降 42% · 诊断流失原因', target: 'p2', preset: 'diagnose' },
+  { id: 't3', customer: '星河银行', text: '昨日 SLA 违约 1 次 · 致歉+补偿', target: 'p3', preset: 'apologize' },
+  { id: 't4', customer: '某金融 SaaS', text: '本月使用 95% · 触达提醒',       target: 'p2', preset: 'usage'    },
+  { id: 't5', customer: '上海政务',    text: '季度结算 · 待生成账单',         target: 'p3', preset: 'settle'   },
+];
+
+// Page 2 — 24h 三线
+const HOURLY = {
+  hours: Array.from({length: 24}, (_, i) => i),
+  // ¥/1M tokens
+  revenue: [3.2,3.0,2.4,2.5,2.7,2.9,3.0,3.3,3.6,3.8,4.0,4.1,4.2,4.3,4.4,4.3,4.1,3.9,3.8,3.7,3.6,3.5,3.4,3.3],
+  cost:    [2.5,2.4,2.6,2.0,2.1,2.2,2.3,2.5,2.7,2.9,3.0,3.1,3.2,3.3,3.3,3.3,3.2,3.1,3.0,2.9,2.8,2.7,2.6,2.5],
+  margin:  [0.7,0.6,-0.2,0.5,0.6,0.7,0.7,0.8,0.9,0.9,1.0,1.0,1.0,1.0,1.1,1.0,0.9,0.8,0.8,0.8,0.8,0.8,0.8,0.8],
+  alertHour: 2,        // 02:17 瞬时毛利跌破 0
+  alertHourLabel: '02:17',
+  alertMsg: '瞬时毛利跌破 0 · L-70B × XYZ 租户',
+};
+
+const WATERFALL = [
+  { name: '收入',       value: 8.32,  type: 'in'  },
+  { name: '−GPU 折旧',  value: -2.10, type: 'out' },
+  { name: '−电力',      value: -0.84, type: 'out' },
+  { name: '−带宽',      value: -0.31, type: 'out' },
+  { name: '−模型授权',  value: -0.97, type: 'out' },
+  { name: '−调度开销',  value: -0.18, type: 'out' },
+  { name: '净毛利',     value: 3.92,  type: 'net' },
+];
+
+const ROI_GOLD = [
+  { rank: 1, model: 'Q-14B', tenant: '星河',    profit: 1.23 },
+  { rank: 2, model: 'Q-14B', tenant: '浦发',    profit: 1.11 },
+  { rank: 3, model: 'V-7B',  tenant: '政务云',  profit: 0.92 },
+  { rank: 4, model: 'Q-14B', tenant: '散客',    profit: 0.74 },
+  { rank: 5, model: 'V-7B',  tenant: '某 SaaS', profit: 0.61 },
+];
+const ROI_BLEED = [
+  { rank: 1, model: 'L-70B', tenant: 'XYZ',    loss: 0.08, severe: true },
+  { rank: 2, model: 'L-70B', tenant: 'C 端池', loss: 0.03 },
+  { rank: 3, model: '长 ctx', tenant: '散客',  loss: 0.01 },
+];
+
+const SUPPLY = [
+  { id: 'qwen',     name: 'Qwen2.5-72B',  origin: '自家', license: '授权 N/A',         status: 'ok',   stock: '28 卡',                  usePct: 0,  note: '健康' },
+  { id: 'llama',    name: 'Llama-3-70B',  origin: '自家', license: 'Meta 协议 OK',     status: 'ok',   stock: '12 卡',                  usePct: 0,  note: '健康' },
+  { id: 'deepseek', name: 'DeepSeek-V3',  origin: '自家', license: 'MIT',              status: 'ok',   stock: '8 卡',                   usePct: 0,  note: '健康' },
+  { id: 'claude',   name: 'Claude',       origin: '中转', license: 'Anthropic API',    status: 'warn', stock: '3.2 亿 token / 月 余量', usePct: 67, note: '本月已用 67%' },
+  { id: 'gpt5',     name: 'GPT-5',        origin: '中转', license: 'Azure OpenAI',     status: 'warn', stock: '1.8 亿 token / 月 余量', usePct: 73, note: '本月已用 73%' },
+  { id: 'gemini',   name: 'Gemini Pro',   origin: '中转', license: 'Google API',       status: 'fail', stock: '已 failover',            usePct: 100,note: '昨日抖动 3 次' },
+];
+
+// Page 3
+const ACTIVE_POLICIES = [
+  { id: 'a1', age: '00:14', label: 'Q-14B v2 灰度 30%',    by: 'Zhang' },
+  { id: 'a2', age: '00:08', label: '星河银行 +20% 扩容',    by: 'Zhang', expires: '4h 后' },
+  { id: 'a3', age: '23:47', label: 'L-70B 定价 -15%',       by: 'Zhang', tag: '闪促' },
+  { id: 'a4', age: '23:22', label: 'XYZ 限流 2k RPS',       by: '系统', auto: true },
+  { id: 'a5', age: '22:15', label: '战时一键 · 保大客户',  by: 'Zhang' },
+];
+
+const LEVERS = [
+  { id: 'version', label: '模型版本', actions: '灰度 / 回滚',                       icon: '◐' },
+  { id: 'quota',   label: '租户配额', actions: '扩容 / 限流 / VIP',                 icon: '▣' },
+  { id: 'pricing', label: '定价',     actions: '单价 / 折扣 / 阶梯',                icon: '¥' },
+  { id: 'route',   label: '路由',     actions: '大小 / 区域 / 集群',                icon: '⇄' },
+  { id: 'fuse',    label: '熔断',     actions: '紧急下线',                          icon: '⚠' },
+  { id: 'wartime', label: '战时一键', actions: '保大客户 · 限 C 端 · 冻结非关键变更', icon: '🛡' },
+];
+
+const AUDIT_INIT = [
+  { time: '00:14', who: 'Zhang', what: 'Q-14B v2 灰度 0→30%', impact: '影响 8 租户', ok: true, rollback: true  },
+  { time: '00:08', who: 'Zhang', what: '星河银行 +20% 扩容',    impact: '影响 1 租户', ok: true, rollback: true  },
+  { time: '23:52', who: 'Li',    what: 'L-70B 定价 -15%',       impact: '影响 C 端池', ok: true, rollback: true  },
+  { time: '23:47', who: '系统',   what: 'XYZ 触发熔断 限流',    impact: '影响 1 租户', ok: true, rollback: false },
+];
+
+/* ============================================================
+   Peter 驾驶舱融合 — 补数据
+   原则: 只在 cockpit 缺失维度上补;重复指标(月营收/已交付 token)走 HERO_BASE,不另出
+   ============================================================ */
+
+// P2 经济 tab 顶部 FinOps 补条 — cockpit 缺的 4 个维度
+const FINOPS_SUPPL = [
+  { label: 'Token 元成本',   value: '¥0.307', meta: '-5.2% vs 上月',   tone: 'emerald' },
+  { label: 'GPU 利用率',     value: '78.4%',  meta: '25.6 PFLOPS',     tone: 'cyan'    },
+  { label: '今日 Token 产出', value: '12.5M',  meta: '+8.3% vs 昨日',   tone: 'emerald' },
+  { label: '本月 ROI',       value: '3.2x',   meta: '超额完成目标',     tone: 'violet'  },
+];
+
+// P1 客户 tab · 内部消费方汇总 banner
+const INTERNAL_AGG = {
+  onlineEmployees: 24,
+  activeAgents:    18,
+  successRate:     '97.3%',
+  effGain:         '4.2x',
+  dailySaved:      '¥2.1 万',
+};
+
+// P1 客户 tab · 数字员工 (双指标: Token 消耗 + 节省人力)
+const INTERNAL_EMPLOYEES = [
+  { id: 'ops',  avatar: '🤖', name: '智能运维助手', role: '巡检 · 告警 · 故障自愈',  status: 'online', monthTasks: 342, tokens: '8.2M',  savedCost: '¥1.8 万' },
+  { id: 'risk', avatar: '📊', name: '风险审核专员', role: '交易审核 · 合规 · 预警',  status: 'online', monthTasks: 486, tokens: '12.5M', savedCost: '¥2.6 万' },
+  { id: 'cs',   avatar: '💬', name: '智能客服主管', role: '咨询 · 解答 · 工单分配',  status: 'busy',   monthTasks: 430, tokens: '15.8M', savedCost: '¥3.2 万' },
+  { id: 'data', avatar: '🔍', name: '数据洞察 Agent', role: '报表 · 分析 · 异常检测', status: 'online', monthTasks: 156, tokens: '6.3M',  savedCost: '¥1.1 万' },
+];
+
+// P1 客户 tab · 内部团队 Token 排名 (业务团队人效)
+const INTERNAL_TEAMS = [
+  { name: '智能客服部', tokens: '28.5M', savedCost: '¥8.6 万', pct: 95 },
+  { name: '风险控制部', tokens: '24.2M', savedCost: '¥7.3 万', pct: 80 },
+  { name: '运营分析部', tokens: '18.7M', savedCost: '¥5.6 万', pct: 62 },
+  { name: '市场营销部', tokens: '12.1M', savedCost: '¥3.6 万', pct: 40 },
+];
+
+// P2 经济 tab · 需求侧 · 部门 Token 成本归因
+const DEPT_DEMAND = [
+  { name: '智能客服部', tokens: '18.5M', pct: 100, bar: 'bg-emerald-500' },
+  { name: '风险控制部', tokens: '12.8M', pct: 69,  bar: 'bg-cyan-500'    },
+  { name: '运营分析部', tokens: '8.2M',  pct: 44,  bar: 'bg-violet-500'  },
+  { name: '市场营销部', tokens: '3.5M',  pct: 19,  bar: 'bg-amber-500'   },
+];
+
+// P3 指挥 tab · 集群 overview (GPU 热力图不画,跳 llm-base)
+const CLUSTER_OVERVIEW = [
+  { label: '总算力',     value: '32 GPU', meta: 'H100×24 · 昇腾×8', tone: 'emerald' },
+  { label: 'GPU 利用率', value: '78.4%',  meta: '平均负载',          tone: 'cyan'    },
+  { label: '集群健康度', value: '96.9%',  meta: '1 降级 · 0 离线',   tone: 'amber'   },
+  { label: '硬件告警',   value: 2,        meta: '显存×1 · 温度×1',   tone: 'rose'    },
+];
+
+// P3 指挥 tab · 工厂健康告警 (和 AuditFeed 并列: 告警 vs 决策流水)
+const FACTORY_ALERTS = [
+  { level: 'success', title: 'Token 产出正常 · 目标完成率 108%', time: '14:32' },
+  { level: 'warning', title: 'Llama-3 P95 延迟 128ms · 关注中',   time: '14:15' },
+  { level: 'danger',  title: 'GPU #12 故障隔离 · 31/32 在线',     time: '13:48', jumpCard: 'r1-n3-c5' },
+];
+
+// SupplyView 每行追加 "今日消耗" 列 — key 对齐 SUPPLY 的 id
+const MODEL_CONSUMPTION = {
+  qwen:     '12.5M',
+  llama:    '8.5M',
+  deepseek: '5.8M',
+  claude:   '3.2M',
+  gpt5:     '2.1M',
+  gemini:   '—',
+};
+
+/* ============================================================
+   cockpit 独立 TopBar — 商业大脑
+   1·客户 / 2·经济 / 3·指挥 / 4·复盘
+   ============================================================ */
+
+const NAV_TABS = [
+  { id: 'p1', num: '1', label: '客户' },
+  { id: 'p2', num: '2', label: '经济' },
+  { id: 'p3', num: '3', label: '指挥' },
+  { id: 'p4', num: '4', label: '复盘' },
+];
+
+function TopBar({ activeTabId, onTabChange, ctx, onCtxClear, onPalette, redlines, isEmbed }) {
+  return (
+    <header className="bg-white border-b border-slate-200 sticky top-0 z-30">
+      <div className="px-4 h-12 flex items-center gap-3">
+        {!isEmbed && (
+          <a href="index.html" className="flex items-center gap-2 mr-2 group flex-shrink-0">
+            <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-violet-500 via-fuchsia-500 to-cyan-500 flex items-center justify-center text-white shadow-sm group-hover:shadow-md transition">
+              <span className="text-xs font-bold">⚡</span>
+            </div>
+            <span className="text-[14px] font-bold text-slate-900 tracking-tight">TokenFactory</span>
+            <span className="text-[11px] text-slate-400 font-medium ml-1 pl-2 border-l border-slate-200">经营驾驶舱</span>
+          </a>
+        )}
+
+        <nav className="flex items-center">
+          {NAV_TABS.map((t) => {
+            const active = t.id === activeTabId;
+            return (
+              <button key={t.id} onClick={() => onTabChange(t)}
+                className={`flex items-baseline gap-1.5 px-2.5 py-1.5 rounded-md text-[12.5px] transition ${
+                  active ? 'bg-slate-900 text-white shadow-sm' : 'text-slate-600 hover:bg-slate-100'
+                }`}>
+                <span className="text-[10px] font-mono text-slate-400">{t.num}</span>
+                <span className="font-semibold">{t.label}</span>
+              </button>
+            );
+          })}
+        </nav>
+
+        <div className="flex-1"></div>
+
+        {ctx && (
+          <div className="flex items-center gap-1.5 bg-violet-50 border border-violet-200 rounded-md pl-2 pr-1 py-1 text-[11px]">
+            <span className="text-slate-500">▢上下文</span>
+            <span className="font-semibold text-violet-700">{ctx.name}</span>
+            <button onClick={onCtxClear} className="text-violet-500 hover:text-violet-800 ml-1 px-1">✕</button>
+          </div>
+        )}
+
+        {typeof redlines === 'number' && redlines > 0 && (
+          <div className="flex items-center gap-1.5 text-[11px] text-red-600 font-semibold">
+            <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse"></span>
+            红线 <span className="font-mono font-bold">{redlines}</span>
+          </div>
+        )}
+
+        {!isEmbed && (
+          <a href="index.html"
+            className="flex items-center gap-1 px-2.5 py-1 bg-violet-50 hover:bg-violet-100 border border-violet-200 rounded-md text-[11px] text-violet-700 font-medium transition">
+            <span>💬</span> 聊一下
+          </a>
+        )}
+
+        {!isEmbed && (
+          <button className="flex items-center gap-1 pl-1 pr-1.5 py-0.5 rounded-md hover:bg-slate-100">
+            <div className="w-6 h-6 rounded-full bg-gradient-to-br from-slate-700 to-slate-900 text-white text-[10px] font-bold flex items-center justify-center">厂</div>
+            <span className="text-[10px] text-slate-400">▾</span>
+          </button>
+        )}
+      </div>
+
+      <div className="px-4 h-9 border-t border-slate-100 flex items-center gap-3 bg-slate-50">
+        <button onClick={onPalette}
+          className="flex items-center gap-2 text-left px-3 py-1.5 bg-white border border-slate-200 rounded-md text-[11px] text-slate-400 hover:border-slate-300 transition w-96">
+          <span>🔍</span>
+          <span className="flex-1">找客户 / 找模型 / 快速跳转…</span>
+          <kbd className="text-[9px] font-mono px-1.5 py-0.5 bg-slate-100 rounded text-slate-500">⌘K</kbd>
+        </button>
+        <div className="flex-1"></div>
+        <button className="text-[11px] text-slate-500 hover:text-slate-700 px-2 py-1">[保存视图]</button>
+        <button className="text-[11px] text-slate-500 hover:text-slate-700 px-2 py-1">[对比]</button>
+      </div>
+    </header>
+  );
+}
+
+/* ============================================================
+   ⌘K 命令面板
+   ============================================================ */
+
+const PALETTE_ITEMS = [
+  { type: 'page',  label: '客户与出货台',     hint: 'cockpit',     target: 'cockpit.html#p1'  },
+  { type: 'page',  label: '单位经济仪表盘',   hint: 'cockpit',     target: 'cockpit.html#p2'  },
+  { type: 'page',  label: '经营指挥台',       hint: 'cockpit',     target: 'cockpit.html#p3'  },
+  { type: 'page',  label: '复盘',             hint: 'cockpit',     target: 'cockpit.html#p4'  },
+  { type: 'page',  label: '感知·GPU 集群拓扑', hint: 'llm-base',   target: 'llm-base.html#p1' },
+  { type: 'page',  label: '诊断·请求级追踪',   hint: 'llm-base',   target: 'llm-base.html#p2' },
+  { type: 'page',  label: '操作·流量与配额',   hint: 'llm-base',   target: 'llm-base.html#p3' },
+  { type: 'cust',  label: '星河银行',     hint: '订阅 · 红线', target: 'cockpit.html#p1', ctx: '星河银行' },
+  { type: 'cust',  label: '浙江政务云',       hint: 'JV · 红线',   target: 'cockpit.html#p1', ctx: '浙江政务云'   },
+  { type: 'cust',  label: '浦发银行',         hint: 'JV · 正常',   target: 'cockpit.html#p1', ctx: '浦发银行'     },
+  { type: 'cust',  label: '某 SaaS 厂商',     hint: '订阅 · 黄线', target: 'cockpit.html#p1', ctx: '某 SaaS 厂商' },
+  { type: 'cust',  label: '上海政务',         hint: 'JV · 正常',   target: 'cockpit.html#p1', ctx: '上海政务'     },
+  { type: 'model', label: 'Qwen2.5-72B',      hint: '自家 · 28 卡', target: 'cockpit.html#p2' },
+  { type: 'model', label: 'Llama-3-70B',      hint: '自家 · 12 卡', target: 'cockpit.html#p2' },
+  { type: 'model', label: 'DeepSeek-V3',      hint: '自家 · 8 卡',  target: 'cockpit.html#p2' },
+  { type: 'model', label: 'Claude (中转)',    hint: 'Anthropic 67%',target: 'cockpit.html#p2' },
+  { type: 'model', label: 'GPT-5 (中转)',     hint: 'Azure 73%',    target: 'cockpit.html#p2' },
+];
+
+function CommandPalette({ open, onClose, onLocalJump }) {
+  const [query, setQuery] = useState('');
+  const [cursor, setCursor] = useState(0);
+  const inputRef = useRef(null);
+
+  const filtered = useMemo(() => {
+    const q = query.toLowerCase().trim();
+    if (!q) return PALETTE_ITEMS;
+    return PALETTE_ITEMS.filter(i =>
+      i.label.toLowerCase().includes(q) || i.hint.toLowerCase().includes(q) || i.type.includes(q)
+    );
+  }, [query]);
+
+  useEffect(() => {
+    if (open) { setQuery(''); setCursor(0); setTimeout(() => inputRef.current?.focus(), 50); }
+  }, [open]);
+  useEffect(() => { setCursor(0); }, [query]);
+
+  if (!open) return null;
+
+  const choose = (item) => {
+    onClose();
+    // 同文件跳转用 React state；跨文件用 location
+    if (item.target.startsWith('cockpit.html')) {
+      const view = item.target.split('#')[1];
+      onLocalJump(view, item.ctx ? { type: 'customer', name: item.ctx } : null);
+    } else {
+      if (item.ctx) sessionStorage.setItem('tf_ctx', JSON.stringify({ type: 'customer', name: item.ctx }));
+      window.location.href = item.target;
+    }
+  };
+
+  const onKey = (e) => {
+    if (e.key === 'Escape')    { e.preventDefault(); onClose(); return; }
+    if (e.key === 'ArrowDown') { e.preventDefault(); setCursor(c => Math.min(filtered.length - 1, c + 1)); return; }
+    if (e.key === 'ArrowUp')   { e.preventDefault(); setCursor(c => Math.max(0, c - 1)); return; }
+    if (e.key === 'Enter')     { e.preventDefault(); const item = filtered[cursor]; if (item) choose(item); }
+  };
+
+  const TYPE_ICON  = { page: '📄', cust: '🏢', model: '🧊' };
+  const TYPE_LABEL = { page: '页面', cust: '客户', model: '模型' };
+
+  return (
+    <div className="fixed inset-0 z-50 bg-slate-900/40 flex items-start justify-center pt-24" onClick={onClose}>
+      <div className="bg-white rounded-2xl shadow-2xl max-w-xl w-full mx-6 overflow-hidden" onClick={e => e.stopPropagation()}>
+        <div className="flex items-center gap-3 px-4 py-3 border-b border-slate-100">
+          <span className="text-slate-400 text-base">⌘K</span>
+          <input ref={inputRef} value={query} onChange={e => setQuery(e.target.value)} onKeyDown={onKey}
+            placeholder="找客户 / 找模型 / 跳页面…"
+            className="flex-1 text-[14px] text-slate-900 bg-transparent focus:outline-none placeholder:text-slate-400" />
+          <span className="text-[10px] text-slate-400 font-mono">{filtered.length}</span>
+        </div>
+        <div className="max-h-80 overflow-y-auto">
+          {filtered.length === 0 && (
+            <div className="px-4 py-8 text-center text-[12px] text-slate-400">
+              没匹配 — 试试 "星河"、"GPT" 或 "客户"
+            </div>
+          )}
+          {filtered.map((item, i) => {
+            const sel = i === cursor;
+            return (
+              <button key={i} onClick={() => choose(item)}
+                onMouseEnter={() => setCursor(i)}
+                className={`w-full px-4 py-2.5 flex items-center gap-3 text-left transition ${sel ? 'bg-violet-50' : 'hover:bg-slate-50'}`}>
+                <span className="text-base">{TYPE_ICON[item.type]}</span>
+                <div className="flex-1 min-w-0">
+                  <div className="text-[13px] font-semibold text-slate-900">{item.label}</div>
+                  <div className="text-[10px] text-slate-400">{item.hint}</div>
+                </div>
+                <span className="text-[9px] uppercase font-bold tracking-wider text-slate-400">{TYPE_LABEL[item.type]}</span>
+              </button>
+            );
+          })}
+        </div>
+        <div className="px-4 py-2 border-t border-slate-100 bg-slate-50 flex items-center gap-3 text-[10px] text-slate-400 font-mono">
+          <span>↑↓ 选择</span>
+          <span>⏎ 跳转</span>
+          <span>Esc 关闭</span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ============================================================
+   Page 1 · 客户与出货台
+   ============================================================ */
+
+function HeroStrip({ redlines }) {
+  const cards = [
+    { label: '本月应收',    value: HERO_BASE.revenue,    note: HERO_BASE.revenueTrend, noteColor: 'text-emerald-600' },
+    { label: '已交付 token', value: HERO_BASE.delivered,  note: HERO_BASE.quota,         noteColor: 'text-slate-400' },
+    { label: '合约完成率',  value: HERO_BASE.completion, note: HERO_BASE.completionNote, noteColor: 'text-emerald-600' },
+    { label: '红线',        value: redlines,             note: '⚠',                     valueColor: 'text-red-600',    noteColor: 'text-red-500' },
+    { label: '黄线',        value: HERO_BASE.yellow,     note: '⚠',                     valueColor: 'text-amber-600',  noteColor: 'text-amber-500' },
+    { label: '下游 MAU',    value: HERO_BASE.mau,        note: HERO_BASE.mauTrend,      noteColor: 'text-emerald-600' },
+  ];
+  return (
+    <div className="grid grid-cols-6 gap-2 px-6 pt-4">
+      {cards.map((c, i) => (
+        <div key={i} className="bg-white border border-slate-200 rounded-lg p-3">
+          <div className="text-[10px] uppercase tracking-wider text-slate-400 font-semibold">{c.label}</div>
+          <div className={`text-2xl font-bold font-mono mt-1 leading-none ${c.valueColor || 'text-slate-900'}`}>{c.value}</div>
+          <div className={`text-[10px] mt-1 font-mono ${c.noteColor}`}>{c.note}</div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function CustomerRow({ c, onPick, onAction, flashed, jumpTo }) {
+  const statusBar = c.status === 'red'    ? 'bg-red-500'    : c.status === 'yellow' ? 'bg-amber-500'  : 'bg-slate-300';
+  const statusDot = c.status === 'red'    ? '🔴'             : c.status === 'yellow' ? '🟡'             : '○';
+  const noteCls   = c.status === 'red'    ? 'text-red-700'  : c.status === 'yellow' ? 'text-amber-700' : 'text-slate-500';
+  const actions = actionsForCustomer(c);
+
+  return (
+    <div onClick={() => onPick(c)}
+      className={`border border-slate-200 rounded-lg p-3 hover:border-slate-300 hover:shadow-sm transition cursor-pointer ${flashed ? 'flash-green' : 'bg-white'}`}>
+      <div className="flex items-start gap-3">
+        <span className="text-base mt-0.5 leading-none">{statusDot}</span>
+        <div className="flex-1 min-w-0">
+          <div className="flex items-baseline gap-2">
+            <span className="text-[10px] font-mono uppercase text-slate-400">[{c.type}]</span>
+            <span className="text-[14px] font-bold text-slate-900">{c.name}</span>
+            <span className="text-[10px] text-slate-400">年订 {c.yearOrder}</span>
+          </div>
+          <div className="mt-2">
+            <div className="h-2 bg-slate-100 rounded-full overflow-hidden">
+              <div className={`h-full ${statusBar}`} style={{ width: `${c.usagePct}%` }}></div>
+            </div>
+            <div className="flex items-center justify-between mt-1 text-[10px] text-slate-500">
+              <span>SLA <span className="font-mono text-slate-700">{c.sla}%</span> · {c.settle || '—'}</span>
+              <span className="font-mono">{c.usagePct}%</span>
+            </div>
+          </div>
+          <div className={`text-[11px] mt-1.5 ${noteCls}`}>{c.note}</div>
+          <div className="flex flex-wrap gap-1.5 mt-2">
+            {actions.map((a, i) => {
+              const isDiag = a.includes('诊断');
+              return (
+                <button key={i}
+                  onClick={(e) => { e.stopPropagation(); onAction(c, a, jumpTo); }}
+                  className={`text-[10px] px-2 py-1 rounded transition ${
+                    isDiag ? 'bg-violet-600 hover:bg-violet-700 text-white font-semibold' :
+                             'bg-slate-100 hover:bg-slate-200 text-slate-700'
+                  }`}>
+                  {a}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function ContractsList({ flashedCustomerName, onPick, onAction, jumpTo }) {
+  const [filter, setFilter] = useState('all');
+  const filtered = useMemo(() => {
+    if (filter === 'all')    return CUSTOMERS;
+    if (filter === 'jv')     return CUSTOMERS.filter(c => c.type === 'JV');
+    if (filter === 'sub')    return CUSTOMERS.filter(c => c.type === '订阅');
+    if (filter === 'red')    return CUSTOMERS.filter(c => c.status === 'red');
+    if (filter === 'yellow') return CUSTOMERS.filter(c => c.status === 'yellow');
+    return CUSTOMERS;
+  }, [filter]);
+
+  return (
+    <div className="bg-white border border-slate-200 rounded-xl p-4">
+      <div className="flex items-center justify-between mb-3">
+        <div>
+          <div className="text-[10px] uppercase tracking-wider text-slate-400 font-semibold">企业合约</div>
+          <div className="text-[11px] text-slate-500 mt-0.5">默认按风险排序 · 红→黄→VIP→其他</div>
+        </div>
+        <div className="flex items-center gap-1 text-[11px]">
+          <span className="text-slate-400 mr-1">筛选:</span>
+          {[['all','全部'],['jv','JV'],['sub','订阅'],['red','红线'],['yellow','黄线']].map(([k,l]) => (
+            <button key={k} onClick={() => setFilter(k)}
+              className={`px-2 py-0.5 rounded transition ${filter===k ? 'bg-slate-900 text-white' : 'text-slate-500 hover:bg-slate-100'}`}>
+              {l}
+            </button>
+          ))}
+        </div>
+      </div>
+      <div className="space-y-2">
+        {filtered.map(c => (
+          <CustomerRow key={c.id} c={c} onPick={onPick} onAction={onAction}
+            flashed={flashedCustomerName === c.name} jumpTo={jumpTo} />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function DownstreamPanel({ onDeepDive }) {
+  // 简单 sparkline SVG
+  const spark = DOWNSTREAM.spark;
+  const max = Math.max(...spark);
+  const points = spark.map((v, i) => `${(i / (spark.length - 1)) * 100},${30 - (v / max) * 26}`).join(' ');
+
+  return (
+    <div className="bg-white border border-slate-200 rounded-xl p-4 h-full flex flex-col">
+      <div className="bg-amber-50 border border-amber-200 rounded-lg p-2 mb-3 text-[10px] text-amber-900 leading-tight">
+        ⚠ 这是<strong>我们客户们的终端用户</strong>汇总,不是 DaoCloud 自己的散户(脱软入智战略红线)
+      </div>
+      <div className="text-[10px] uppercase tracking-wider text-slate-400 font-semibold mb-2">客户的下游 C 端汇总</div>
+
+      <div className="grid grid-cols-3 gap-2 mb-4">
+        <div>
+          <div className="text-[10px] text-slate-400">总 MAU</div>
+          <div className="text-[16px] font-bold font-mono text-slate-900">{DOWNSTREAM.mau}</div>
+        </div>
+        <div>
+          <div className="text-[10px] text-slate-400">付费转化</div>
+          <div className="text-[16px] font-bold font-mono text-slate-900">{DOWNSTREAM.conversion}</div>
+        </div>
+        <div>
+          <div className="text-[10px] text-slate-400">平均 ARPU</div>
+          <div className="text-[16px] font-bold font-mono text-slate-900">{DOWNSTREAM.arpu}</div>
+        </div>
+      </div>
+
+      <div className="mb-4">
+        <div className="text-[10px] uppercase tracking-wider text-slate-400 font-semibold mb-1.5">来源 TOP 3 客户</div>
+        <div className="space-y-1.5">
+          {DOWNSTREAM.topSources.map((s, i) => (
+            <div key={i} className="flex items-center gap-2">
+              <div className="w-16 text-[11px] text-slate-700 truncate">{s.name}</div>
+              <div className="flex-1 h-3 bg-slate-100 rounded">
+                <div className="h-full bg-cyan-500 rounded" style={{ width: `${s.pct}%` }}></div>
+              </div>
+              <div className="w-12 text-right text-[10px] font-mono text-slate-600">{s.mau}</div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <div className="mb-3">
+        <div className="text-[10px] uppercase tracking-wider text-slate-400 font-semibold mb-1.5">实时聚合流水</div>
+        <div className="flex items-baseline gap-2">
+          <div className="text-[18px] font-bold font-mono text-slate-900">{DOWNSTREAM.rpm}</div>
+          <div className="text-[10px] text-slate-400">/ 分钟 ↑</div>
+        </div>
+        <svg viewBox="0 0 100 32" className="w-full h-8 mt-1">
+          <polyline fill="none" stroke="#06b6d4" strokeWidth="1.5" points={points} />
+          <polyline fill="rgba(6,182,212,0.12)" stroke="none" points={`0,32 ${points} 100,32`} />
+        </svg>
+      </div>
+
+      <button onClick={onDeepDive}
+        className="mt-auto text-[11px] text-violet-600 hover:text-violet-800 font-medium text-left">
+        按客户拆分 → (沉浸页, 不在主 cockpit 占地)
+      </button>
+    </div>
+  );
+}
+
+function TodoQueue({ todos, completed, onAction }) {
+  const [showAll, setShowAll] = useState(false);
+  const visible = showAll ? todos : todos.slice(0, 3);
+  const folded = todos.length - visible.length;
+
+  return (
+    <div className="bg-white border border-slate-200 rounded-xl p-4 mt-4">
+      <div className="flex items-center justify-between mb-2">
+        <div>
+          <div className="text-[10px] uppercase tracking-wider text-slate-400 font-semibold">今日要打的电话</div>
+          <div className="text-[11px] text-slate-500 mt-0.5">Actionable Queue · 持久化 · 7 天后自动归档</div>
+        </div>
+        <div className="text-[10px] text-slate-400">{Object.keys(completed).length} / {todos.length} 完成</div>
+      </div>
+      <div className="space-y-1">
+        {visible.map(t => {
+          const done = completed[t.id];
+          return (
+            <div key={t.id} className={`flex items-center gap-2 text-[12px] border-b border-slate-50 py-1.5 ${done ? 'opacity-50' : ''}`}>
+              <input type="checkbox" checked={!!done} readOnly className="accent-emerald-600" />
+              <span className="font-semibold text-slate-800">{t.customer}</span>
+              <span className="text-slate-400">·</span>
+              <span className={`flex-1 ${done ? 'line-through text-slate-400' : 'text-slate-600'}`}>{t.text}</span>
+              {!done && (
+                <button onClick={() => onAction(t)}
+                  className="text-[10px] px-2 py-0.5 bg-violet-50 hover:bg-violet-100 border border-violet-200 text-violet-700 rounded font-medium">
+                  → {t.target === 'p2' ? 'Page 2' : t.target === 'p3' ? 'Page 3' : 'Page 1'}
+                </button>
+              )}
+            </div>
+          );
+        })}
+      </div>
+      {folded > 0 && (
+        <button onClick={() => setShowAll(true)} className="mt-2 text-[10px] text-slate-400 hover:text-slate-600">
+          ── 折叠 ({folded} 条更早) ──
+        </button>
+      )}
+    </div>
+  );
+}
+
+/* ============================================================
+   Peter 融合 · 新面板组件
+   — 内部消费方 / FinOps 补条 / 部门需求侧 / 工厂体检 / 工厂健康告警
+   ============================================================ */
+
+// P2 顶部 FinOps 补条
+function FinOpsSupplStrip() {
+  const tone = {
+    emerald: 'text-emerald-600',
+    cyan:    'text-cyan-600',
+    violet:  'text-violet-600',
+    amber:   'text-amber-600',
+  };
+  return (
+    <div className="grid grid-cols-4 gap-2">
+      {FINOPS_SUPPL.map((c, i) => (
+        <div key={i} className="bg-white border border-slate-200 rounded-lg p-3">
+          <div className="text-[10px] uppercase tracking-wider text-slate-400 font-semibold">{c.label}</div>
+          <div className={`text-xl font-bold font-mono mt-1 leading-none ${tone[c.tone] || 'text-slate-900'}`}>{c.value}</div>
+          <div className="text-[10px] mt-1 font-mono text-slate-500">{c.meta}</div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+// P1 内部消费方 banner
+function InternalConsumerBanner() {
+  const items = [
+    { label: '在线数字员工', value: INTERNAL_AGG.onlineEmployees },
+    { label: '活跃 Agent',   value: INTERNAL_AGG.activeAgents },
+    { label: '任务成功率',   value: INTERNAL_AGG.successRate, color: 'text-emerald-600' },
+    { label: '人效提升',     value: INTERNAL_AGG.effGain },
+    { label: '日均节省人力', value: INTERNAL_AGG.dailySaved, color: 'text-emerald-600' },
+  ];
+  return (
+    <div className="flex items-center gap-6 px-4 py-3 bg-white border border-slate-200 rounded-xl">
+      <div className="pr-4 border-r border-slate-200 shrink-0">
+        <div className="text-[10px] uppercase tracking-wider text-slate-400 font-semibold">内部消费方</div>
+        <div className="text-[13px] font-bold text-slate-900 mt-0.5">数字员工 & Agent</div>
+      </div>
+      {items.map((it, i) => (
+        <div key={i} className="flex flex-col items-start">
+          <div className={`text-[18px] font-bold font-mono leading-none ${it.color || 'text-slate-900'}`}>{it.value}</div>
+          <div className="text-[10px] text-slate-400 mt-1">{it.label}</div>
+        </div>
+      ))}
+      <div className="flex-1"></div>
+      <div className="text-[10px] text-slate-400 max-w-[180px] text-right leading-tight">
+        内部自己人用 Token · 和外部客户并列展示
+      </div>
+    </div>
+  );
+}
+
+// P1 单张数字员工卡 (双指标: Token + 节省人力)
+function InternalEmployeeCard({ emp }) {
+  const statusCls = emp.status === 'online'
+    ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+    : 'bg-amber-50 text-amber-700 border-amber-200';
+  const statusLabel = emp.status === 'online' ? '运行中' : '高负载';
+  return (
+    <div className="bg-white border border-slate-200 rounded-xl p-3 hover:border-slate-300 hover:shadow-sm transition">
+      <div className="flex items-start justify-between">
+        <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-emerald-500 to-teal-500 flex items-center justify-center text-base">
+          {emp.avatar}
+        </div>
+        <span className={`text-[10px] px-2 py-0.5 rounded border font-semibold ${statusCls}`}>{statusLabel}</span>
+      </div>
+      <div className="mt-2 text-[13px] font-bold text-slate-900 leading-tight">{emp.name}</div>
+      <div className="text-[10px] text-slate-500 mt-0.5">{emp.role}</div>
+      <div className="grid grid-cols-3 gap-1 mt-3 pt-2 border-t border-slate-100">
+        <div>
+          <div className="text-[13px] font-bold font-mono text-slate-900 leading-none">{emp.monthTasks}</div>
+          <div className="text-[9px] text-slate-400 mt-1">本月任务</div>
+        </div>
+        <div>
+          <div className="text-[13px] font-bold font-mono text-slate-900 leading-none">{emp.tokens}</div>
+          <div className="text-[9px] text-slate-400 mt-1">Token 消耗</div>
+        </div>
+        <div>
+          <div className="text-[13px] font-bold font-mono text-emerald-600 leading-none">{emp.savedCost}</div>
+          <div className="text-[9px] text-slate-400 mt-1">节省人力</div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// P1 内部团队 Token 排名
+function InternalTeamRank() {
+  return (
+    <div className="bg-white border border-slate-200 rounded-xl p-4 h-full">
+      <div className="text-[10px] uppercase tracking-wider text-slate-400 font-semibold mb-3">内部团队 Token 排名</div>
+      <div className="space-y-2.5">
+        {INTERNAL_TEAMS.map((t, i) => {
+          const medal = i === 0 ? 'bg-amber-400 text-white' :
+                        i === 1 ? 'bg-slate-400 text-white' :
+                        i === 2 ? 'bg-orange-400 text-white' :
+                                  'bg-slate-100 text-slate-500';
+          return (
+            <div key={i} className="flex items-center gap-2">
+              <div className={`w-5 h-5 rounded flex items-center justify-center text-[10px] font-bold font-mono shrink-0 ${medal}`}>{i + 1}</div>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-baseline justify-between">
+                  <span className="text-[12px] font-semibold text-slate-800">{t.name}</span>
+                  <span className="text-[11px] font-mono font-bold text-slate-700">{t.tokens}</span>
+                </div>
+                <div className="mt-1 h-1.5 bg-slate-100 rounded overflow-hidden">
+                  <div className="h-full bg-emerald-500 rounded" style={{ width: `${t.pct}%` }}></div>
+                </div>
+                <div className="text-[10px] text-emerald-600 font-mono mt-0.5">节省 {t.savedCost}</div>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+// P2 需求侧 · 部门 Token 成本归因
+function DeptDemandPanel() {
+  return (
+    <div className="bg-white border border-slate-200 rounded-xl p-4">
+      <div className="flex items-baseline justify-between mb-3">
+        <div>
+          <div className="text-[10px] uppercase tracking-wider text-slate-400 font-semibold">需求侧 · 部门 Token 归因</div>
+          <div className="text-[11px] text-slate-500 mt-0.5">本月累计 · 内部成本分摊 (与外部客户 ContractsList 互补)</div>
+        </div>
+        <div className="text-[11px] text-slate-500">
+          合计 <span className="font-mono font-bold text-slate-700">43.0M</span>
+        </div>
+      </div>
+      <div className="space-y-2">
+        {DEPT_DEMAND.map((d, i) => (
+          <div key={i} className="flex items-center gap-3 text-[11px]">
+            <div className="w-24 text-slate-700 font-medium">{d.name}</div>
+            <div className="flex-1 h-2 bg-slate-100 rounded overflow-hidden">
+              <div className={`h-full rounded ${d.bar}`} style={{ width: `${d.pct}%` }}></div>
+            </div>
+            <div className="w-14 text-right font-mono font-bold text-slate-700">{d.tokens}</div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// P3 集群 overview + GPU 拓扑跳转 hook
+function ClusterOverviewStrip() {
+  const tone = {
+    emerald: 'text-emerald-600',
+    cyan:    'text-cyan-600',
+    amber:   'text-amber-600',
+    rose:    'text-rose-600',
+  };
+  return (
+    <div className="mx-6 mt-4 bg-white border border-slate-200 rounded-xl p-4">
+      <div className="flex items-baseline justify-between mb-3">
+        <div>
+          <div className="text-[10px] uppercase tracking-wider text-slate-400 font-semibold">工厂体检 · 集群概览</div>
+          <div className="text-[11px] text-slate-500 mt-0.5">GPU 拓扑 / 请求追踪 / 硬件告警 归 LLM底座 — 避免重复建设</div>
+        </div>
+        <a href="llm-base.html#p1"
+          className="text-[11px] px-3 py-1.5 bg-violet-600 hover:bg-violet-700 text-white font-medium rounded transition">
+          GPU 拓扑 & 热力图 →
+        </a>
+      </div>
+      <div className="grid grid-cols-4 gap-2">
+        {CLUSTER_OVERVIEW.map((s, i) => (
+          <div key={i} className="bg-slate-50 border border-slate-200 rounded-lg p-3">
+            <div className="text-[10px] uppercase tracking-wider text-slate-400 font-semibold">{s.label}</div>
+            <div className={`text-xl font-bold font-mono mt-1 leading-none ${tone[s.tone]}`}>{s.value}</div>
+            <div className="text-[10px] mt-1 font-mono text-slate-500">{s.meta}</div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// P3 工厂健康告警流 (硬件/模型/容量) — 和 AuditFeed (决策流水) 并列
+function FactoryAlertsPanel() {
+  const border = {
+    success: 'border-l-emerald-500',
+    warning: 'border-l-amber-500',
+    danger:  'border-l-red-500',
+  };
+  const iconBg = {
+    success: 'bg-emerald-50 text-emerald-600',
+    warning: 'bg-amber-50 text-amber-600',
+    danger:  'bg-red-50 text-red-600',
+  };
+  const iconChar = { success: '✓', warning: '!', danger: '!' };
+  const handleJump = (card) => {
+    try { sessionStorage.setItem('tf_jump_card', card); } catch {}
+  };
+  return (
+    <div className="bg-white border border-slate-200 rounded-xl mx-6 mt-4">
+      <div className="px-4 py-2.5 border-b border-slate-100 flex items-baseline justify-between">
+        <div>
+          <div className="text-[10px] uppercase tracking-wider text-slate-400 font-semibold">工厂健康告警</div>
+          <div className="text-[11px] text-slate-500 mt-0.5">硬件 / 模型 / 容量 · 红色条目 → LLM底座 p1 现场 · 与决策审计并列</div>
+        </div>
+        <div className="text-[11px] text-slate-400 font-mono">{FACTORY_ALERTS.length} 条</div>
+      </div>
+      <div className="divide-y divide-slate-50">
+        {FACTORY_ALERTS.map((a, i) => (
+          <div key={i} className={`px-4 py-2.5 flex items-center gap-3 border-l-4 ${border[a.level]}`}>
+            <div className={`w-6 h-6 rounded flex items-center justify-center text-[12px] font-bold shrink-0 ${iconBg[a.level]}`}>
+              {iconChar[a.level]}
+            </div>
+            <div className="flex-1 min-w-0">
+              <div className="text-[12px] font-medium text-slate-800 truncate">{a.title}</div>
+            </div>
+            <div className="text-[10px] text-slate-400 font-mono shrink-0">{a.time}</div>
+            {a.jumpCard && (
+              <a href="llm-base.html#p1"
+                onClick={() => handleJump(a.jumpCard)}
+                className="text-[10px] px-2 py-0.5 bg-red-50 hover:bg-red-100 border border-red-200 text-red-700 rounded font-medium shrink-0">
+                跳到源头 →
+              </a>
+            )}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function Page1({ ctx, setCtx, jumpToTab, flashedCustomerName, redlines, todos, completedTodos, completeTodo }) {
+  const onPickCustomer = (c) => setCtx({ type: 'customer', name: c.name });
+
+  const onCustomerAction = (c, action, jumpFn) => {
+    setCtx({ type: 'customer', name: c.name });
+    if (action.includes('诊断')) {
+      jumpToTab('p2', { ctx: { type: 'customer', name: c.name } });
+      return;
+    }
+    // 其他所有动作都跳 P3 + 预填草稿
+    jumpToTab('p3', {
+      ctx: { type: 'customer', name: c.name },
+      draft: { kind: action, customer: c.name, reason: `from Page 1 · ${action} · ${c.name}` },
+    });
+  };
+
+  const onTodoAction = (t) => {
+    if (t.target === 'p2') {
+      jumpToTab('p2', { ctx: { type: 'customer', name: t.customer } });
+    } else if (t.target === 'p3') {
+      jumpToTab('p3', {
+        ctx: { type: 'customer', name: t.customer },
+        draft: { kind: t.preset, customer: t.customer, reason: `from todo: ${t.text}` },
+      });
+    }
+  };
+
+  return (
+    <div className="pb-8">
+      <HeroStrip redlines={redlines} />
+      <div className="grid grid-cols-5 gap-4 px-6 mt-4">
+        <div className="col-span-3">
+          <ContractsList flashedCustomerName={flashedCustomerName}
+            onPick={onPickCustomer} onAction={onCustomerAction} jumpTo={jumpToTab} />
+        </div>
+        <div className="col-span-2">
+          <DownstreamPanel onDeepDive={() => alert('沉浸页 — 原型未实现')} />
+        </div>
+      </div>
+
+      {/* Peter 融合 · 内部消费方 (数字员工 + 内部团队) */}
+      <div className="px-6 mt-4 space-y-3">
+        <InternalConsumerBanner />
+        <div className="grid grid-cols-5 gap-4">
+          <div className="col-span-3 grid grid-cols-2 gap-3">
+            {INTERNAL_EMPLOYEES.map(e => <InternalEmployeeCard key={e.id} emp={e} />)}
+          </div>
+          <div className="col-span-2">
+            <InternalTeamRank />
+          </div>
+        </div>
+      </div>
+
+      <div className="px-6">
+        <TodoQueue todos={todos} completed={completedTodos} onAction={onTodoAction} />
+      </div>
+    </div>
+  );
+}
+
+/* ============================================================
+   Page 2 · 单位经济仪表盘
+   ============================================================ */
+
+function ScopeBar({ scope, setScope, ctx, clearCtx }) {
+  return (
+    <div className="px-6 py-2.5 bg-white border-b border-slate-200 flex items-center gap-3 text-[11px]">
+      {ctx && (
+        <div className="flex items-center gap-1.5 bg-violet-50 border border-violet-200 rounded-md pl-2 pr-1 py-1">
+          <span className="text-slate-500">▢上下文</span>
+          <span className="font-semibold text-violet-700">{ctx.name}</span>
+          <button onClick={clearCtx} className="text-violet-500 hover:text-violet-800 ml-1 px-1">✕</button>
+        </div>
+      )}
+      <span className="text-slate-400">切片:</span>
+      {[
+        { k: 'customer', label: '客户', v: ctx?.name || '全部' },
+        { k: 'model',    label: '模型', v: scope.model },
+        { k: 'time',     label: '时段', v: scope.time },
+        { k: 'cluster',  label: '集群', v: scope.cluster },
+      ].map(s => (
+        <div key={s.k} className="flex items-center gap-1 bg-slate-100 rounded px-2 py-1">
+          <span className="text-slate-500">{s.label}</span>
+          <span className="font-semibold text-slate-700">{s.v}</span>
+          <span className="text-slate-400">▾</span>
+        </div>
+      ))}
+      <div className="flex-1"></div>
+      <span className="text-[10px] text-slate-400">原型 — 切片不实际过滤数据</span>
+    </div>
+  );
+}
+
+function ThreeLineChart({ onAlertJump }) {
+  // 800 × 240 SVG
+  const W = 820, H = 240, PAD_L = 40, PAD_R = 30, PAD_T = 16, PAD_B = 26;
+  const plotW = W - PAD_L - PAD_R, plotH = H - PAD_T - PAD_B;
+  const max = 5, min = -1;
+  const x = (i) => PAD_L + (i / 23) * plotW;
+  const y = (v) => PAD_T + plotH - ((v - min) / (max - min)) * plotH;
+  const line = (arr) => arr.map((v, i) => `${x(i)},${y(v)}`).join(' ');
+
+  return (
+    <div className="bg-white border border-slate-200 rounded-xl p-4">
+      <div className="flex items-baseline justify-between mb-2">
+        <div>
+          <div className="text-[10px] uppercase tracking-wider text-slate-400 font-semibold">实时三线图 · 心电图</div>
+          <div className="flex items-baseline gap-2 mt-0.5">
+            <span className="text-[11px] text-slate-500">秒级 ±5%</span>
+            <span className="text-[10px] text-slate-300">·</span>
+            <span className="text-[11px] text-slate-500">过去 24h</span>
+          </div>
+        </div>
+        <div className="flex items-center gap-4 text-[11px]">
+          <div className="flex items-center gap-1.5"><span className="w-2.5 h-0.5 bg-emerald-500"></span>收入 <span className="font-mono font-bold text-slate-700">3.42</span></div>
+          <div className="flex items-center gap-1.5"><span className="w-2.5 h-0.5 bg-rose-500"></span>成本 <span className="font-mono font-bold text-slate-700">2.61</span></div>
+          <div className="flex items-center gap-1.5"><span className="w-2.5 h-0.5 bg-violet-500"></span>毛利 <span className="font-mono font-bold text-slate-700">0.81 <span className="text-slate-400">(23.7%)</span></span></div>
+        </div>
+      </div>
+      <svg viewBox={`0 0 ${W} ${H}`} className="w-full block">
+        {/* y 轴标尺 */}
+        {[0, 1, 2, 3, 4, 5].map(t => (
+          <g key={t}>
+            <line x1={PAD_L} y1={y(t)} x2={W - PAD_R} y2={y(t)} stroke="#f1f5f9" strokeWidth="1" />
+            <text x={PAD_L - 4} y={y(t) + 3} textAnchor="end" className="text-[9px] fill-slate-400 font-mono">{t}</text>
+          </g>
+        ))}
+        {/* y=0 重线 */}
+        <line x1={PAD_L} y1={y(0)} x2={W - PAD_R} y2={y(0)} stroke="#cbd5e1" strokeWidth="1" />
+        {/* x 轴 */}
+        {HOURLY.hours.filter(h => h % 2 === 0).map(h => (
+          <text key={h} x={x(h)} y={H - PAD_B + 14} textAnchor="middle" className="text-[9px] fill-slate-400 font-mono">
+            {String(h).padStart(2,'0')}
+          </text>
+        ))}
+        {/* 三线 */}
+        <polyline fill="none" stroke="#10b981" strokeWidth="1.5" points={line(HOURLY.revenue)} />
+        <polyline fill="none" stroke="#f43f5e" strokeWidth="1.5" points={line(HOURLY.cost)} />
+        <polyline fill="none" stroke="#8b5cf6" strokeWidth="1.5" points={line(HOURLY.margin)} />
+        {/* 02:17 锚点红闪 */}
+        <g>
+          <line x1={x(HOURLY.alertHour)} y1={PAD_T} x2={x(HOURLY.alertHour)} y2={H - PAD_B} stroke="#dc2626" strokeWidth="1" strokeDasharray="2 2" />
+          <circle cx={x(HOURLY.alertHour)} cy={y(HOURLY.margin[HOURLY.alertHour])} r="5" fill="#dc2626">
+            <animate attributeName="r" values="5;8;5" dur="1.5s" repeatCount="indefinite" />
+          </circle>
+        </g>
+        {/* y 轴标题 */}
+        <text x={6} y={PAD_T + 10} className="text-[9px] fill-slate-400 font-mono">¥/1M</text>
+      </svg>
+      <div className="mt-2 flex items-center gap-2 text-[11px] bg-red-50 border border-red-200 rounded p-2">
+        <span className="text-red-600">⚠</span>
+        <span className="font-mono font-bold text-red-700">{HOURLY.alertHourLabel}</span>
+        <span className="text-red-700">{HOURLY.alertMsg}</span>
+        <div className="flex-1"></div>
+        <button onClick={() => onAlertJump('view')} className="text-[10px] px-2 py-0.5 bg-white hover:bg-slate-50 border border-red-300 text-red-700 rounded font-medium">查看</button>
+        <button onClick={() => onAlertJump('limit')} className="text-[10px] px-2 py-0.5 bg-red-600 hover:bg-red-700 text-white rounded font-bold">一键限流 →3</button>
+      </div>
+    </div>
+  );
+}
+
+function WaterfallChart({ onSegClick }) {
+  // 横向瀑布
+  return (
+    <div className="bg-white border border-slate-200 rounded-xl p-4 h-full">
+      <div className="flex items-baseline justify-between mb-3">
+        <div>
+          <div className="text-[10px] uppercase tracking-wider text-slate-400 font-semibold">毛利瀑布</div>
+          <div className="text-[11px] text-slate-500 mt-0.5">分钟级 ±10% · 点任一段下钻</div>
+        </div>
+        <div className="text-[11px]">
+          <span className="text-slate-500">毛利率</span>
+          <span className="ml-1 font-mono font-bold text-emerald-600">47.1%</span>
+        </div>
+      </div>
+      <div className="space-y-1.5">
+        {WATERFALL.map((seg, i) => {
+          const absVal = Math.abs(seg.value);
+          const widthPct = (absVal / 8.32) * 100;
+          const colorBg = seg.type === 'in'  ? 'bg-emerald-500' :
+                          seg.type === 'out' ? 'bg-rose-400'    : 'bg-violet-600';
+          return (
+            <button key={i} onClick={() => onSegClick(seg)}
+              className="w-full flex items-center gap-2 text-left hover:bg-slate-50 rounded p-1 -m-1 transition">
+              <div className="w-24 text-[11px] text-slate-700">{seg.name}</div>
+              <div className="flex-1 h-5 bg-slate-50 rounded relative">
+                <div className={`h-full rounded ${colorBg}`} style={{ width: `${widthPct}%` }}></div>
+                <div className="absolute inset-0 flex items-center px-2 text-[10px] font-mono font-bold text-white">
+                  {seg.value > 0 ? `¥${seg.value.toFixed(2)}亿` : `-¥${Math.abs(seg.value).toFixed(2)}亿`}
+                </div>
+              </div>
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+function ROIList({ onPickRow }) {
+  return (
+    <div className="bg-white border border-slate-200 rounded-xl p-4 h-full">
+      <div className="text-[10px] uppercase tracking-wider text-slate-400 font-semibold mb-1">ROI 榜单</div>
+      <div className="text-[11px] text-slate-500 mb-3">
+        <span className="inline-block w-2 h-2 bg-slate-300 mr-1 align-middle rounded-sm"></span>
+        ±15-20% · 灰带 = 置信区间
+      </div>
+
+      <div className="text-[10px] uppercase tracking-wider text-amber-700 font-bold mb-1.5">🏆 金主 TOP 5 (单卡每秒毛利)</div>
+      <div className="space-y-1 mb-4">
+        {ROI_GOLD.map(r => (
+          <button key={r.rank} onClick={() => onPickRow(r)}
+            className="w-full flex items-center gap-2 text-left hover:bg-amber-50 rounded p-1 -m-1 transition text-[11px]">
+            <span className="font-mono text-slate-400 w-3">{r.rank}.</span>
+            <span className="font-mono text-slate-700 w-12">{r.model}</span>
+            <span className="text-slate-500">×</span>
+            <span className="text-slate-700 flex-1">{r.tenant}</span>
+            <span className="font-mono font-bold text-emerald-700">¥{r.profit.toFixed(2)}/s</span>
+            <span className="text-slate-300 font-mono text-[9px]">░</span>
+          </button>
+        ))}
+      </div>
+
+      <div className="text-[10px] uppercase tracking-wider text-red-700 font-bold mb-1.5">🩸 吸血 TOP 3 (瞬时亏损)</div>
+      <div className="space-y-1">
+        {ROI_BLEED.map(r => (
+          <button key={r.rank} onClick={() => onPickRow(r)}
+            className={`w-full flex items-center gap-2 text-left rounded p-1 -m-1 transition text-[11px] ${r.severe ? 'bg-red-50 hover:bg-red-100' : 'hover:bg-red-50'}`}>
+            <span className="font-mono text-slate-400 w-3">{r.rank}.</span>
+            <span className="font-mono text-slate-700 w-12">{r.model}</span>
+            <span className="text-slate-500">×</span>
+            <span className="text-slate-700 flex-1">{r.tenant}</span>
+            <span className="font-mono font-bold text-red-700">-¥{r.loss.toFixed(2)}/s</span>
+            {r.severe && <span className="text-red-500">🔴</span>}
+          </button>
+        ))}
+      </div>
+      <div className="text-[10px] text-slate-400 mt-3">点任一行 → 联动左边瀑布</div>
+    </div>
+  );
+}
+
+function SupplyView() {
+  return (
+    <div className="bg-white border border-slate-200 rounded-xl p-4">
+      <div className="flex items-baseline justify-between mb-3">
+        <div>
+          <div className="text-[10px] uppercase tracking-wider text-slate-400 font-semibold">模型供给视角 · 上游 raw material × 今日消耗</div>
+          <div className="text-[11px] text-slate-500 mt-0.5">自家库存 + 中转余量 + failover 历史 + 今日 token 消耗 — 供需同面</div>
+        </div>
+      </div>
+      <div className="space-y-1">
+        {SUPPLY.map(s => {
+          const icon = s.status === 'ok' ? '✓' : s.status === 'warn' ? '⚠' : '✗';
+          const color = s.status === 'ok' ? 'text-emerald-600' : s.status === 'warn' ? 'text-amber-600' : 'text-red-600';
+          const consumption = MODEL_CONSUMPTION[s.id] || '—';
+          return (
+            <div key={s.id} className="flex items-center gap-3 text-[11px] py-1.5 border-b border-slate-50 last:border-0">
+              <span className={`text-base ${color} w-4`}>{icon}</span>
+              <span className="font-mono font-semibold text-slate-800 w-32">{s.name}</span>
+              <span className="text-slate-500 w-12">{s.origin}</span>
+              <span className="text-slate-500 w-32">{s.license}</span>
+              <span className="text-slate-700 flex-1 font-mono">{s.stock}</span>
+              <span className="font-mono font-bold text-emerald-700 w-16 text-right">{consumption}</span>
+              {s.usePct > 0 && (
+                <div className="w-20 h-2 bg-slate-100 rounded">
+                  <div className={`h-full rounded ${s.usePct > 70 ? 'bg-amber-500' : 'bg-emerald-500'}`} style={{ width: `${s.usePct}%` }}></div>
+                </div>
+              )}
+              <span className={`text-[10px] ${color} font-medium w-32 text-right`}>{s.note}</span>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+function WhatIfPanel({ ctx, onSubmit }) {
+  const [pricing, setPricing] = useState(5);
+  const [qPrice,  setQPrice]  = useState(-2);
+  const [lQuota,  setLQuota]  = useState(10);
+  const [ladder,  setLadder]  = useState(true);
+
+  const computed = useMemo(() => {
+    const base = 23.7;
+    const delta = pricing * 0.3 + qPrice * (-0.1) + lQuota * 0.05 + (ladder ? 0.5 : 0);
+    const newRate = base + delta;
+    const monthGain = (delta / base) * 3.92;
+    return {
+      newRate: newRate.toFixed(1),
+      delta: delta.toFixed(1),
+      monthGain: monthGain.toFixed(2),
+      confidence: '±0.6pt',
+      sample: 'n=12, 偏差来自租户行为弹性',
+      atRisk: pricing >= 5 ? 3 : 0,
+    };
+  }, [pricing, qPrice, lQuota, ladder]);
+
+  const [showHint, setShowHint] = useState(false);
+
+  return (
+    <div className="bg-gradient-to-br from-violet-50 to-white border border-violet-200 rounded-xl p-4">
+      <div className="flex items-baseline justify-between mb-3">
+        <div>
+          <div className="text-[10px] uppercase tracking-wider text-violet-700 font-bold">What-If 模拟器</div>
+          <div className="text-[11px] text-slate-600 mt-0.5">可拖拽 · 实时重算 · 数字旁的 (?) 显示置信</div>
+        </div>
+        <div className="text-[11px] text-slate-500">{ctx ? `上下文: ${ctx.name}` : '上下文: 全局'}</div>
+      </div>
+
+      <div className="space-y-3 mb-4">
+        <SliderRow label={`[${ctx?.name || '星河银行'}] 定价`} value={pricing} setValue={setPricing} min={-10} max={20} suffix="%" />
+        <SliderRow label="[Q-14B] 单价" value={qPrice} setValue={setQPrice} min={-10} max={10} suffix="%" />
+        <SliderRow label="[L-70B] 配额" value={lQuota} setValue={setLQuota} min={-20} max={50} suffix="%" />
+        <div className="flex items-center gap-3">
+          <div className="w-40 text-[11px] text-slate-700">[长 context] 阶梯定价</div>
+          <button onClick={() => setLadder(!ladder)}
+            className={`w-9 h-5 rounded-full relative transition ${ladder ? 'bg-violet-600' : 'bg-slate-300'}`}>
+            <span className={`absolute top-0.5 w-4 h-4 rounded-full bg-white shadow transition ${ladder ? 'left-[18px]' : 'left-0.5'}`}></span>
+          </button>
+          <span className="text-[11px] text-slate-600 font-mono">{ladder ? '开启' : '关闭'}</span>
+        </div>
+      </div>
+
+      <div className="bg-white border border-slate-200 rounded-lg p-3">
+        <div className="text-[10px] uppercase tracking-wider text-slate-400 font-bold mb-2">预测结果</div>
+        <div className="space-y-1.5 text-[12px]">
+          <div className="flex items-center justify-between">
+            <span className="text-slate-600">整体毛利率</span>
+            <div className="flex items-center gap-1">
+              <span className="font-mono text-slate-500">23.7%</span>
+              <span className="text-slate-400">→</span>
+              <span className="font-mono font-bold text-emerald-700">{computed.newRate}%</span>
+              <span className="text-emerald-600 text-[10px]">({computed.delta > 0 ? '+' : ''}{computed.delta}pt)</span>
+              <button onClick={() => setShowHint(!showHint)}
+                className="text-[10px] w-4 h-4 rounded-full bg-slate-200 hover:bg-violet-200 text-slate-600 hover:text-violet-700 font-bold transition">?</button>
+            </div>
+          </div>
+          <div className="flex items-center justify-between">
+            <span className="text-slate-600">月毛利</span>
+            <div className="flex items-center gap-1">
+              <span className="font-mono text-slate-500">¥3.92亿</span>
+              <span className="text-slate-400">→</span>
+              <span className="font-mono font-bold text-emerald-700">¥{(3.92 + parseFloat(computed.monthGain)).toFixed(2)}亿</span>
+              <span className="text-emerald-600 text-[10px]">(+¥{computed.monthGain}亿)</span>
+              <span className="text-[10px] w-4 h-4 rounded-full bg-slate-200 text-slate-600 font-bold flex items-center justify-center">?</span>
+            </div>
+          </div>
+          {computed.atRisk > 0 && (
+            <div className="flex items-center justify-between text-amber-700 bg-amber-50 -mx-1 px-1 py-1 rounded">
+              <span>风险客户</span>
+              <span className="font-mono font-semibold">+{computed.atRisk} 个可能流失 (星河, 某SaaS, ...)</span>
+            </div>
+          )}
+        </div>
+        {showHint && (
+          <div className="mt-2 p-2 bg-slate-50 border border-slate-200 rounded text-[10px] text-slate-600 leading-relaxed">
+            基于过去 90 天 12 次同类调整,平均偏差 {computed.confidence},样本量 12,不确定性来自: 租户行为弹性
+          </div>
+        )}
+      </div>
+
+      <div className="mt-3 flex gap-2 justify-end">
+        <button onClick={() => { setPricing(5); setQPrice(-2); setLQuota(10); setLadder(true); }}
+          className="text-[11px] px-3 py-1.5 bg-white hover:bg-slate-50 border border-slate-200 text-slate-700 rounded">
+          ↺ 重置
+        </button>
+        <button className="text-[11px] px-3 py-1.5 bg-white hover:bg-slate-50 border border-slate-200 text-slate-700 rounded">
+          💾 锁定草稿
+        </button>
+        <button onClick={() => onSubmit({ pricing, qPrice, lQuota, ladder, computed })}
+          className="text-[11px] px-3 py-1.5 bg-violet-600 hover:bg-violet-700 text-white font-bold rounded shadow-sm">
+          → 下发到指挥台
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function SliderRow({ label, value, setValue, min, max, suffix }) {
+  const sign = value > 0 ? '+' : '';
+  return (
+    <div className="flex items-center gap-3">
+      <div className="w-40 text-[11px] text-slate-700">{label}</div>
+      <input type="range" min={min} max={max} value={value} onChange={e => setValue(parseInt(e.target.value))}
+        className="flex-1 accent-violet-600" />
+      <div className="w-12 text-right text-[11px] font-mono font-bold text-violet-700">{sign}{value}{suffix}</div>
+    </div>
+  );
+}
+
+function Page2({ ctx, setCtx, jumpToTab }) {
+  const [scope, setScope] = useState({ customer: '全部', model: '全部', time: '24h', cluster: '全部' });
+  const [highlightSeg, setHighlightSeg] = useState(null);
+
+  const onAlertJump = (kind) => {
+    if (kind === 'limit') {
+      jumpToTab('p3', {
+        ctx: { type: 'tenant', name: 'XYZ 租户' },
+        draft: { kind: '限流', customer: 'XYZ', reason: 'from 02:17 三线告警 · 瞬时毛利跌破 0' },
+      });
+    }
+  };
+
+  const onSubmitWhatIf = (payload) => {
+    const draft = {
+      kind: '定价 · 配额 · 阶梯',
+      customer: ctx?.name || '星河银行',
+      changes: [
+        { label: '年包单价', delta: `${payload.pricing > 0 ? '+' : ''}${payload.pricing}%` },
+        { label: 'Q-14B 单价', delta: `${payload.qPrice > 0 ? '+' : ''}${payload.qPrice}%` },
+        { label: 'L-70B 配额', delta: `${payload.lQuota > 0 ? '+' : ''}${payload.lQuota}%` },
+        { label: '长 ctx 阶梯', delta: payload.ladder ? '开启' : '关闭' },
+      ],
+      economic: {
+        rateOld: '23.7%',
+        rateNew: `${payload.computed.newRate}%`,
+        delta: payload.computed.delta,
+        monthGain: payload.computed.monthGain,
+        confidence: payload.computed.confidence,
+      },
+      reason: `from 经济模拟 ${payload.computed.delta > 0 ? '+' : ''}${payload.computed.delta}pt ${payload.computed.confidence}, 月毛利 +¥${payload.computed.monthGain}亿`,
+    };
+    jumpToTab('p3', { ctx, draft });
+  };
+
+  return (
+    <div className="pb-8">
+      <ScopeBar scope={scope} setScope={setScope} ctx={ctx} clearCtx={() => setCtx(null)} />
+      <div className="px-6 pt-4 space-y-4">
+        {/* Peter 融合 · FinOps 补条 (cockpit 缺的 4 维度) */}
+        <FinOpsSupplStrip />
+        <ThreeLineChart onAlertJump={onAlertJump} />
+        <div className="grid grid-cols-2 gap-4">
+          <WaterfallChart onSegClick={setHighlightSeg} />
+          <ROIList onPickRow={(r) => setHighlightSeg(r)} />
+        </div>
+        <SupplyView />
+        {/* Peter 融合 · 需求侧 · 部门 Token 归因 */}
+        <DeptDemandPanel />
+        <WhatIfPanel ctx={ctx} onSubmit={onSubmitWhatIf} />
+      </div>
+    </div>
+  );
+}
+
+/* ============================================================
+   Page 3 · 经营指挥台
+   ============================================================ */
+
+function WarRoom({ policies, onRevoke }) {
+  return (
+    <div className="bg-white border border-slate-200 rounded-xl p-4 mx-6 mt-4">
+      <div className="flex items-baseline justify-between mb-2">
+        <div>
+          <div className="text-[10px] uppercase tracking-wider text-slate-400 font-semibold">战情面板 · 当前生效的非默认策略</div>
+          <div className="text-[11px] text-slate-500 mt-0.5">不可折叠 · 眼睛默认落点</div>
+        </div>
+        <div className="text-[11px]">
+          <span className="text-slate-400">活跃</span>
+          <span className="ml-1 font-mono font-bold text-violet-700">{policies.length}</span>
+        </div>
+      </div>
+      <div className="space-y-1">
+        {policies.map(p => (
+          <div key={p.id} className="flex items-center gap-3 text-[11px] py-1.5 border-b border-slate-50 last:border-0">
+            <span className="font-mono text-slate-400">⏱ {p.age}</span>
+            <span className="font-semibold text-slate-800 flex-1">{p.label}</span>
+            {p.expires && <span className="text-[10px] text-slate-500">有效期 {p.expires}</span>}
+            {p.tag && <span className="text-[10px] px-1.5 py-0.5 bg-amber-50 text-amber-700 border border-amber-200 rounded">{p.tag}</span>}
+            <span className={`text-[10px] ${p.auto ? 'text-blue-600' : 'text-slate-500'}`}>by {p.by}</span>
+            <button className="text-[10px] px-2 py-0.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded">详情</button>
+            <button onClick={() => onRevoke(p)} className="text-[10px] px-2 py-0.5 bg-white border border-slate-200 hover:bg-red-50 hover:border-red-300 hover:text-red-600 rounded">
+              {p.kind === 'lock' ? '解锁' : '撤销'}
+            </button>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function LeversPanel({ selected, setSelected, draft }) {
+  return (
+    <div className="bg-white border border-slate-200 rounded-xl p-4">
+      <div className="text-[10px] uppercase tracking-wider text-slate-400 font-semibold mb-3">杠杆区</div>
+      <div className="space-y-1.5">
+        {LEVERS.map(l => {
+          const active = selected === l.id;
+          return (
+            <button key={l.id} onClick={() => setSelected(l.id)}
+              className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg border text-left transition ${
+                active ? 'bg-violet-50 border-violet-300 text-violet-900' : 'bg-white border-slate-200 hover:border-slate-300 text-slate-700'
+              }`}>
+              <span className="text-lg w-5">{l.icon}</span>
+              <div className="flex-1 min-w-0">
+                <div className="text-[12px] font-bold">{l.label}</div>
+                <div className="text-[10px] text-slate-400 font-mono">{l.actions}</div>
+              </div>
+              {active && <span className="text-violet-600">←</span>}
+            </button>
+          );
+        })}
+      </div>
+
+      {/* 选中杠杆的内联控件（示意） */}
+      {selected && (
+        <div className="mt-3 pt-3 border-t border-slate-100">
+          <div className="text-[10px] uppercase tracking-wider text-slate-400 font-bold mb-2">
+            ▼ 当前选中: {LEVERS.find(l => l.id === selected)?.label}
+            {draft?.customer && <span> · {draft.customer}</span>}
+          </div>
+          {selected === 'pricing' && draft?.changes && (
+            <div className="space-y-1.5 text-[11px]">
+              {draft.changes.map((c, i) => (
+                <div key={i} className="flex items-center justify-between bg-slate-50 rounded px-2 py-1">
+                  <span className="text-slate-700">{c.label}</span>
+                  <span className="font-mono font-bold text-violet-700">{c.delta}</span>
+                </div>
+              ))}
+            </div>
+          )}
+          {selected !== 'pricing' && (
+            <div className="text-[11px] text-slate-500 italic">原型 — 此杠杆的内联控件未实现</div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function ImpactPreview({ draft, reason, setReason, onExecute, executed }) {
+  const [confirmed, setConfirmed] = useState(false);
+  const [dryRunOk, setDryRunOk] = useState(false);
+
+  if (!draft) {
+    return (
+      <div className="bg-slate-50 border border-dashed border-slate-300 rounded-xl p-6 text-center">
+        <div className="text-[12px] text-slate-400">影响半径预演</div>
+        <div className="text-[14px] text-slate-500 mt-2">从 Page 1 客户行 / Page 2 What-If / 杠杆区拉一个草稿过来</div>
+      </div>
+    );
+  }
+
+  const canExecute = reason.trim().length > 0 && dryRunOk;
+
+  return (
+    <div className="bg-white border border-slate-200 rounded-xl p-4">
+      <div className="flex items-baseline justify-between mb-3">
+        <div>
+          <div className="text-[10px] uppercase tracking-wider text-violet-700 font-bold">🎯 当前草稿</div>
+          <div className="text-[14px] font-bold text-slate-900 mt-0.5">{draft.customer} · {draft.kind}</div>
+        </div>
+        <div className="text-[10px] text-slate-400">预生效时间 30s</div>
+      </div>
+
+      {/* 影响范围 */}
+      <div className="bg-slate-50 border border-slate-200 rounded-lg p-3 mb-3">
+        <div className="text-[10px] uppercase tracking-wider text-slate-500 font-bold mb-2">📊 影响范围</div>
+        <div className="grid grid-cols-2 gap-2 text-[11px]">
+          <div>
+            <div className="text-slate-500">租户</div>
+            <div className="font-mono font-bold text-slate-800">{draft.customer === '星河银行' || draft.kind?.includes('限流') ? '12 个' : '1 个'}</div>
+          </div>
+          <div>
+            <div className="text-slate-500">token/h</div>
+            <div className="font-mono font-bold text-slate-800">4.2 亿</div>
+          </div>
+          <div>
+            <div className="text-slate-500">SLA 合约</div>
+            <div className="font-mono font-bold text-slate-800">2 条硬约束</div>
+          </div>
+          <div>
+            <div className="text-slate-500">大客户</div>
+            <div className="font-mono font-bold text-slate-800">3 (含 {draft.customer})</div>
+          </div>
+        </div>
+      </div>
+
+      {/* 经济影响 (来自 Page 2) */}
+      {draft.economic && (
+        <div className="bg-emerald-50 border border-emerald-200 rounded-lg p-3 mb-3">
+          <div className="text-[10px] uppercase tracking-wider text-emerald-700 font-bold mb-2">📈 预计经济影响 (from Page 2)</div>
+          <div className="space-y-1 text-[11px]">
+            <div className="flex justify-between">
+              <span className="text-slate-600">毛利率</span>
+              <span className="font-mono">{draft.economic.rateOld} → <span className="font-bold text-emerald-700">{draft.economic.rateNew}</span></span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-slate-600">月毛利</span>
+              <span className="font-mono font-bold text-emerald-700">+¥{draft.economic.monthGain}亿</span>
+            </div>
+            <div className="flex justify-between text-[10px] text-emerald-600">
+              <span>置信区间</span>
+              <span className="font-mono">{draft.economic.confidence}</span>
+            </div>
+          </div>
+          <div className="text-[10px] text-emerald-600 mt-2 italic">置信区间穿透 — 不在执行层洗掉误差</div>
+        </div>
+      )}
+
+      {/* 风险 */}
+      <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 mb-3">
+        <div className="text-[10px] uppercase tracking-wider text-amber-700 font-bold mb-1.5">⚠ 风险</div>
+        <ul className="text-[11px] text-amber-900 space-y-0.5 list-disc ml-4">
+          <li>浦发 SLA 硬约束</li>
+          <li>距上次灰度 3h, 建议 ≥ 4h</li>
+          <li>历史同类成功率 <span className="font-mono font-bold">94%</span></li>
+        </ul>
+      </div>
+
+      {/* 变更原因 (强制) */}
+      <div className="mb-3">
+        <div className="text-[10px] uppercase tracking-wider text-slate-500 font-bold mb-1">📝 变更原因 (必填)</div>
+        <textarea value={reason} onChange={e => setReason(e.target.value)}
+          rows={3}
+          placeholder="为什么要做这个变更?"
+          className="w-full text-[11px] font-mono bg-slate-50 border border-slate-200 rounded p-2 focus:outline-none focus:border-violet-400 resize-none" />
+        {reason.trim().length === 0 && (
+          <div className="text-[10px] text-red-600 mt-1">⚠ 不写原因不能执行</div>
+        )}
+      </div>
+
+      {/* 按钮 */}
+      <div className="flex gap-2">
+        <button onClick={() => { setDryRunOk(true); setConfirmed(false); }}
+          className="flex-1 text-[11px] px-3 py-2 bg-white hover:bg-slate-50 border border-slate-200 text-slate-700 rounded font-medium">
+          {dryRunOk ? '✓ Dry-Run 通过' : 'Dry-Run'}
+        </button>
+        <button onClick={() => setDryRunOk(true)}
+          className="flex-1 text-[11px] px-3 py-2 bg-white hover:bg-slate-50 border border-slate-200 text-slate-700 rounded font-medium">
+          预演 2s
+        </button>
+        <button onClick={onExecute} disabled={!canExecute || executed}
+          className={`flex-1 text-[11px] px-3 py-2 rounded font-bold ${
+            canExecute && !executed
+              ? 'bg-red-600 hover:bg-red-700 text-white shadow-sm'
+              : 'bg-slate-200 text-slate-400 cursor-not-allowed'
+          }`}>
+          {executed ? '执行中…' : '执行'}
+        </button>
+      </div>
+      {!dryRunOk && reason.trim().length > 0 && (
+        <div className="text-[10px] text-slate-400 mt-2 text-center">先 Dry-Run, 再执行</div>
+      )}
+    </div>
+  );
+}
+
+function AuditFeed({ audit, onRollback }) {
+  return (
+    <div className="bg-white border border-slate-200 rounded-xl mx-6 mt-4">
+      <div className="px-4 py-2.5 border-b border-slate-100">
+        <div className="text-[10px] uppercase tracking-wider text-slate-400 font-semibold">实时审计流 · 全局唯一</div>
+        <div className="text-[11px] text-slate-500 mt-0.5">cockpit / llm-base 共用同一条流的不同视图 — 合规可对账</div>
+      </div>
+      <div className="divide-y divide-slate-50">
+        {audit.map((a, i) => (
+          <div key={i} className="px-4 py-2 flex items-center gap-3 text-[11px]">
+            <span className="font-mono text-slate-500 w-12">{a.time}</span>
+            <span className={`font-semibold w-16 ${a.who === '系统' ? 'text-blue-600' : 'text-slate-700'}`}>{a.who}</span>
+            <span className="text-slate-700 flex-1 font-mono">{a.what}</span>
+            <span className="text-[10px] text-slate-500 w-24">{a.impact}</span>
+            <span className={`text-[10px] ${a.ok ? 'text-emerald-600' : 'text-red-600'}`}>{a.ok ? '✓' : '✗'}</span>
+            {a.rollback && (
+              <button onClick={() => onRollback(a)} className="text-[10px] px-2 py-0.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded">[回滚]</button>
+            )}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function Page3({ ctx, draftFromP2, jumpToTab, setDraftFromP2, setRedlines, setFlashedCustomerName, completeTodoFor, audit, addAudit }) {
+  const [selectedLever, setSelectedLever] = useState(draftFromP2 ? 'pricing' : null);
+  const [reason, setReason] = useState(draftFromP2?.reason || '');
+  const [executed, setExecuted] = useState(false);
+  const [policies, setPolicies] = useState(ACTIVE_POLICIES);
+
+  // 当从 Page 2 收到新草稿时
+  useEffect(() => {
+    if (draftFromP2) {
+      setSelectedLever('pricing');
+      setReason(draftFromP2.reason || '');
+    }
+  }, [draftFromP2]);
+
+  const draft = draftFromP2 || (ctx ? { kind: '待选杠杆', customer: ctx.name } : null);
+
+  const onExecute = () => {
+    if (!reason.trim()) return;
+    setExecuted(true);
+    // 加入审计流
+    addAudit({
+      time: new Date().toTimeString().slice(0,5),
+      who: 'Zhang',
+      what: `${draft.customer} · ${draft.kind}`,
+      impact: '影响 1 租户',
+      ok: true,
+      rollback: true,
+    });
+    // 加入战情面板
+    setPolicies(p => [
+      { id: `new-${Date.now()}`, age: '00:00', label: `${draft.customer} · ${draft.kind}`, by: 'Zhang' },
+      ...p,
+    ]);
+    // 0.5s 后跳回 P1 + 闪绿 + 红线减一
+    setTimeout(() => {
+      setRedlines(r => Math.max(0, r - 1));
+      if (draft?.customer) {
+        setFlashedCustomerName(draft.customer);
+        setTimeout(() => setFlashedCustomerName(null), 2500);
+        completeTodoFor(draft.customer);
+      }
+      setDraftFromP2(null);
+      setExecuted(false);
+      jumpToTab('p1');
+    }, 500);
+  };
+
+  const onRevoke = (p) => {
+    setPolicies(prev => prev.filter(x => x.id !== p.id));
+  };
+
+  return (
+    <div className="pb-8">
+      {/* Peter 融合 · 工厂体检 (集群 overview + GPU 拓扑跳 llm-base) */}
+      <ClusterOverviewStrip />
+      <WarRoom policies={policies} onRevoke={onRevoke} />
+      <div className="grid grid-cols-2 gap-4 px-6 mt-4">
+        <LeversPanel selected={selectedLever} setSelected={setSelectedLever} draft={draft} />
+        <ImpactPreview draft={draft} reason={reason} setReason={setReason} onExecute={onExecute} executed={executed} />
+      </div>
+      <AuditFeed audit={audit} onRollback={(a) => alert(`回滚 ${a.what} (原型示意)`)} />
+      {/* Peter 融合 · 工厂健康告警 (硬件/模型/容量,与决策审计流并列) */}
+      <FactoryAlertsPanel />
+    </div>
+  );
+}
+
+/* ============================================================
+   Page4: 复盘 — 本周经营回顾（占位）
+   ============================================================ */
+
+function Page4({ audit }) {
+  const highlights = [
+    { title: '本周营收', value: '¥ 4.27 M', trend: '+8.2% WoW', tone: 'emerald' },
+    { title: '红线处置',  value: '3 / 3',    trend: '全部闭环',   tone: 'emerald' },
+    { title: 'SLA 达成',  value: '99.94%',   trend: '低于目标 0.03pp', tone: 'amber' },
+    { title: '流失预警',  value: '1 户',     trend: '某 SaaS ↓42%',    tone: 'amber' },
+  ];
+  const toneClass = {
+    emerald: 'text-emerald-600 bg-emerald-50 border-emerald-200',
+    amber:   'text-amber-600 bg-amber-50 border-amber-200',
+    slate:   'text-slate-600 bg-slate-50 border-slate-200',
+  };
+  const wins = [
+    { when: '周三', text: '星河银行 TTFT 违约 → 致歉 + 补偿 + 路由调整，客户 24h 内恢复正常' },
+    { when: '周二', text: '浙江政务云合约 90% 预警 → 提前扩容 + 签补充协议' },
+    { when: '周一', text: 'Q-14B v2 灰度 30% 稳定，本周完成全量' },
+  ];
+  const lessons = [
+    { when: '周四', text: 'Claude 中转抖动 2 次 → 需要多家备路，已排入下周 Infra backlog' },
+    { when: '周二', text: '某 SaaS 厂商 7 日用量 ↓42% 未及时触达 → 流失预警规则需要再收紧' },
+  ];
+
+  return (
+    <div className="max-w-7xl mx-auto p-6 space-y-6">
+      <div className="flex items-baseline justify-between">
+        <div>
+          <div className="text-[10px] uppercase tracking-widest text-slate-400 font-semibold">Weekly Review</div>
+          <h1 className="text-2xl font-bold text-slate-900 mt-1">本周经营复盘</h1>
+          <p className="text-[13px] text-slate-500 mt-1">每周一自动生成 · 结合红线处置、SLA、财务、决策流水</p>
+        </div>
+        <div className="flex items-center gap-2">
+          <select className="bg-white border border-slate-200 rounded-md px-3 py-1.5 text-[12px] text-slate-700">
+            <option>第 15 周 (4/7 – 4/13)</option>
+            <option>第 14 周 (3/31 – 4/6)</option>
+            <option>第 13 周 (3/24 – 3/30)</option>
+          </select>
+          <button className="px-3 py-1.5 bg-slate-900 hover:bg-slate-800 text-white text-[12px] font-medium rounded-md">导出 PDF</button>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-4 gap-4">
+        {highlights.map(h => (
+          <div key={h.title} className={`rounded-2xl border p-4 ${toneClass[h.tone]}`}>
+            <div className="text-[11px] uppercase tracking-wider font-semibold opacity-70">{h.title}</div>
+            <div className="text-3xl font-bold font-mono mt-2">{h.value}</div>
+            <div className="text-[11px] mt-1 opacity-80">{h.trend}</div>
+          </div>
+        ))}
+      </div>
+
+      <div className="grid grid-cols-2 gap-4">
+        <div className="bg-white rounded-2xl border border-slate-200 p-5">
+          <div className="flex items-center gap-2 mb-3">
+            <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
+            <div className="text-[10px] uppercase tracking-widest text-slate-500 font-semibold">做对的事</div>
+          </div>
+          <div className="space-y-3">
+            {wins.map((w, i) => (
+              <div key={i} className="flex gap-3 text-[13px]">
+                <div className="w-10 shrink-0 text-[11px] font-mono text-slate-400">{w.when}</div>
+                <div className="flex-1 text-slate-700">{w.text}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div className="bg-white rounded-2xl border border-slate-200 p-5">
+          <div className="flex items-center gap-2 mb-3">
+            <span className="w-2 h-2 rounded-full bg-amber-500"></span>
+            <div className="text-[10px] uppercase tracking-widest text-slate-500 font-semibold">需要改进</div>
+          </div>
+          <div className="space-y-3">
+            {lessons.map((l, i) => (
+              <div key={i} className="flex gap-3 text-[13px]">
+                <div className="w-10 shrink-0 text-[11px] font-mono text-slate-400">{l.when}</div>
+                <div className="flex-1 text-slate-700">{l.text}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      <div className="bg-white rounded-2xl border border-slate-200 p-5">
+        <div className="flex items-baseline justify-between mb-3">
+          <div>
+            <div className="text-[10px] uppercase tracking-widest text-slate-500 font-semibold">本周决策流水</div>
+            <div className="text-[11px] text-slate-400 mt-0.5">来自 P3 · 指挥台审计日志</div>
+          </div>
+          <div className="text-[11px] text-slate-400 font-mono">{audit.length} 条</div>
+        </div>
+        <div className="space-y-2">
+          {audit.map((a, i) => (
+            <div key={i} className="flex items-center gap-3 text-[12px] px-3 py-2 bg-slate-50 rounded-lg">
+              <div className="w-12 font-mono text-slate-400 text-[11px]">{a.time}</div>
+              <div className="w-14 text-slate-500 text-[11px]">{a.who}</div>
+              <div className="flex-1 text-slate-800 font-medium">{a.what}</div>
+              <div className="text-slate-400 text-[11px]">{a.impact}</div>
+              {a.rollback && <span className="text-[10px] text-violet-600 font-semibold">可回滚</span>}
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <div className="text-center text-[11px] text-slate-400 pt-2 pb-6">
+        原型占位 · 正式版将由 LLM 自动生成叙述段落 + 数据图表
+      </div>
+    </div>
+  );
+}
+
+/* ============================================================
+   App 主组件 + 全局状态 + 跨页联动
+   ============================================================ */
+
+function App() {
+  // 嵌入模式:?embed=1 时隐藏与宿主重复的外壳元素
+  const isEmbed = (() => {
+    if (typeof window === 'undefined') return false;
+    return new URLSearchParams(window.location.search).get('embed') === '1';
+  })();
+
+  // hash 路由
+  const initialView = (() => {
+    const h = (typeof window !== 'undefined' ? window.location.hash : '').replace('#', '');
+    return ['p1','p2','p3'].includes(h) ? h : 'p1';
+  })();
+
+  const [activeTab, setActiveTab] = useState(initialView);
+
+  // 全局 ctx (跨页 + 跨文件，sessionStorage)
+  const [ctx, setCtx] = useState(() => {
+    try {
+      const raw = sessionStorage.getItem('tf_ctx');
+      return raw ? JSON.parse(raw) : null;
+    } catch { return null; }
+  });
+  useEffect(() => {
+    if (ctx) sessionStorage.setItem('tf_ctx', JSON.stringify(ctx));
+    else sessionStorage.removeItem('tf_ctx');
+  }, [ctx]);
+
+  // 跨页状态
+  const [draftFromP2,         setDraftFromP2]         = useState(null);
+  const [flashedCustomerName, setFlashedCustomerName] = useState(null);
+  const [redlines,            setRedlines]            = useState(3);
+  const [todos]                                       = useState(TODOS_INIT);
+  const [completedTodos,      setCompletedTodos]      = useState({});
+  const [audit,               setAudit]               = useState(AUDIT_INIT);
+  const [paletteOpen,         setPaletteOpen]         = useState(false);
+
+  // hash 同步
+  useEffect(() => {
+    if (window.location.hash !== '#' + activeTab) {
+      window.history.replaceState(null, '', '#' + activeTab);
+    }
+  }, [activeTab]);
+  useEffect(() => {
+    const onHash = () => {
+      const h = window.location.hash.replace('#', '');
+      if (['p1','p2','p3','p4'].includes(h)) setActiveTab(h);
+    };
+    window.addEventListener('hashchange', onHash);
+    return () => window.removeEventListener('hashchange', onHash);
+  }, []);
+
+  // 全局键盘 1-4 + ⌘K
+  useEffect(() => {
+    const handler = (e) => {
+      const tag = e.target.tagName;
+      const inField = tag === 'INPUT' || tag === 'TEXTAREA' || e.target.isContentEditable;
+      if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+        e.preventDefault();
+        setPaletteOpen(true);
+        return;
+      }
+      if (inField) return;
+      if (e.key >= '1' && e.key <= '4') {
+        const tab = NAV_TABS[parseInt(e.key) - 1];
+        if (tab) setActiveTab(tab.id);
+      }
+    };
+    document.addEventListener('keydown', handler);
+    return () => document.removeEventListener('keydown', handler);
+  }, []);
+
+  const onTabChange = (tab) => setActiveTab(tab.id);
+
+  // 内部跳转工具
+  const jumpToTab = (id, payload) => {
+    if (payload?.ctx) setCtx(payload.ctx);
+    if (payload?.draft) setDraftFromP2(payload.draft);
+    setActiveTab(id);
+  };
+
+  const completeTodoFor = (customerName) => {
+    const match = todos.find(t => t.customer === customerName);
+    if (match) setCompletedTodos(c => ({ ...c, [match.id]: true }));
+  };
+
+  const addAudit = (entry) => setAudit(a => [entry, ...a]);
+
+  return (
+    <div className="min-h-screen flex flex-col bg-slate-50">
+      <TopBar
+        activeTabId={activeTab}
+        onTabChange={onTabChange}
+        ctx={ctx}
+        onCtxClear={() => setCtx(null)}
+        onPalette={() => setPaletteOpen(true)}
+        redlines={redlines}
+        isEmbed={isEmbed}
+      />
+
+      <main className="flex-1">
+        {activeTab === 'p1' && (
+          <Page1 ctx={ctx} setCtx={setCtx} jumpToTab={jumpToTab}
+            flashedCustomerName={flashedCustomerName}
+            redlines={redlines}
+            todos={todos}
+            completedTodos={completedTodos}
+            completeTodo={(id) => setCompletedTodos(c => ({ ...c, [id]: true }))} />
+        )}
+        {activeTab === 'p2' && (
+          <Page2 ctx={ctx} setCtx={setCtx} jumpToTab={jumpToTab} />
+        )}
+        {activeTab === 'p3' && (
+          <Page3 ctx={ctx} draftFromP2={draftFromP2} jumpToTab={jumpToTab}
+            setDraftFromP2={setDraftFromP2}
+            setRedlines={setRedlines}
+            setFlashedCustomerName={setFlashedCustomerName}
+            completeTodoFor={completeTodoFor}
+            audit={audit} addAudit={addAudit} />
+        )}
+        {activeTab === 'p4' && <Page4 audit={audit} />}
+      </main>
+
+      <CommandPalette
+        open={paletteOpen}
+        onClose={() => setPaletteOpen(false)}
+        onLocalJump={(view, ctxPayload) => {
+          if (ctxPayload) setCtx(ctxPayload);
+          setActiveTab(view);
+        }}
+      />
+    </div>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+</script>
+</body>
+</html>

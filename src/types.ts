@@ -17,6 +17,7 @@ export interface App {
   source?: 'dce-official' | 'community'
   createdAt?: string
   lastRun?: string
+  embedUrl?: string
 }
 
 export type SessionStatus = 'running' | 'deployed' | 'draft' | 'shared' | 'failed'

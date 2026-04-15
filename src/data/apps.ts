@@ -3,6 +3,20 @@ import { App } from '@/types'
 export const APPS: App[] = [
   // ============ My Apps ============
   {
+    id: 'biz-cockpit',
+    name: '经营驾驶舱',
+    icon: 'BC',
+    version: 'v0.1',
+    status: 'running',
+    group: 'mine',
+    description:
+      '客户健康度 / 风险预警 / SLA / 分成结算 的统一经营视图 — Token Factory 商业大脑。',
+    capabilities: ['tf:customers:read', 'tf:sla:read', 'tf:billing:read', 'tf:audit:write'],
+    createdAt: '2026-04-15',
+    lastRun: 'live',
+    embedUrl: '/embedded/cockpit.html?embed=1',
+  },
+  {
     id: 'team-alert-dashboard',
     name: 'Team Alert Dashboard',
     icon: 'DB',
