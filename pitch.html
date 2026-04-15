@@ -1,0 +1,1248 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Forge — 企业业务系统的 AI-Native App Framework</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;700&family=Noto+Sans+SC:wght@400;500;700;900&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #ffffff;
+  --bg-subtle: #fafafa;
+  --bg-muted: #f5f5f5;
+  --fg: #0a0a0a;
+  --fg-muted: #525252;
+  --fg-subtle: #a3a3a3;
+  --border: #e7e7e7;
+  --border-strong: #d4d4d4;
+  --highlight: #fef08a;
+  --accent: #2563eb;
+  --accent-soft: #dbeafe;
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+html {
+  scroll-behavior: smooth;
+  scroll-padding-top: 80px;
+}
+
+body {
+  font-family: 'Inter', 'Noto Sans SC', -apple-system, BlinkMacSystemFont, sans-serif;
+  background: var(--bg);
+  color: var(--fg);
+  font-feature-settings: 'ss01', 'cv11';
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  line-height: 1.5;
+  font-size: 16px;
+}
+
+.mono {
+  font-family: 'JetBrains Mono', ui-monospace, 'SF Mono', Menlo, monospace;
+}
+
+/* ============ NAV ============ */
+nav.top {
+  position: fixed;
+  top: 0; left: 0; right: 0;
+  background: rgba(255, 255, 255, 0.85);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border-bottom: 1px solid var(--border);
+  z-index: 100;
+  padding: 16px 32px;
+}
+
+nav.top .inner {
+  max-width: 1280px;
+  margin: 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+nav.top .logo {
+  font-weight: 800;
+  font-size: 18px;
+  letter-spacing: -0.02em;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  cursor: pointer;
+}
+
+nav.top .logo-mark {
+  width: 28px;
+  height: 28px;
+  background: var(--accent);
+  border-radius: 6px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 15px;
+  font-weight: 800;
+}
+
+nav.top .meta {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 12px;
+  color: var(--fg-muted);
+  letter-spacing: 0.06em;
+  font-weight: 500;
+}
+
+@media (max-width: 640px) {
+  nav.top .meta { display: none; }
+}
+
+/* ============ SECTION BASE ============ */
+section {
+  padding: 140px 48px 100px;
+  max-width: 1280px;
+  margin: 0 auto;
+  position: relative;
+}
+
+section.narrow {
+  max-width: 960px;
+}
+
+@media (max-width: 768px) {
+  section { padding: 100px 24px 80px; }
+}
+
+.eyebrow {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 13px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: var(--fg-muted);
+  margin-bottom: 28px;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.eyebrow::before {
+  content: '';
+  display: inline-block;
+  width: 32px;
+  height: 2px;
+  background: var(--accent);
+}
+
+.eyebrow .num {
+  color: var(--accent);
+  font-weight: 700;
+}
+
+h1 {
+  font-size: clamp(44px, 7.5vw, 104px);
+  font-weight: 900;
+  line-height: 0.98;
+  letter-spacing: -0.035em;
+  margin-bottom: 32px;
+  color: var(--fg);
+}
+
+h1 .accent {
+  color: var(--accent);
+  position: relative;
+  display: inline-block;
+}
+
+h2 {
+  font-size: clamp(34px, 5.2vw, 68px);
+  font-weight: 800;
+  line-height: 1.05;
+  letter-spacing: -0.025em;
+  margin-bottom: 32px;
+  color: var(--fg);
+}
+
+h3 {
+  font-size: 24px;
+  font-weight: 700;
+  letter-spacing: -0.015em;
+  line-height: 1.2;
+  margin-bottom: 12px;
+  color: var(--fg);
+}
+
+p {
+  font-size: 18px;
+  line-height: 1.65;
+  color: var(--fg-muted);
+  max-width: 720px;
+}
+
+p.lead {
+  font-size: 22px;
+  line-height: 1.55;
+  color: var(--fg);
+  font-weight: 400;
+  max-width: 780px;
+  letter-spacing: -0.005em;
+}
+
+p.lead strong { font-weight: 700; }
+
+.hl {
+  background: var(--highlight);
+  padding: 1px 6px;
+  box-decoration-break: clone;
+  -webkit-box-decoration-break: clone;
+  color: var(--fg);
+  font-weight: 500;
+}
+
+.divider {
+  height: 1px;
+  background: var(--border);
+  max-width: 1280px;
+  margin: 0 auto;
+}
+
+/* ============ HERO ============ */
+.hero {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding-top: 120px;
+}
+
+.hero h1 { max-width: 1100px; }
+
+@media (max-width: 640px) {
+  .hero h1 br { display: none; }
+}
+
+.hero .sub {
+  font-size: clamp(17px, 1.6vw, 21px);
+  color: var(--fg-muted);
+  max-width: 720px;
+  line-height: 1.6;
+  margin-bottom: 56px;
+}
+
+.hero-meta {
+  display: flex;
+  gap: 56px;
+  padding-top: 40px;
+  border-top: 1px solid var(--border);
+  font-family: 'JetBrains Mono', monospace;
+  flex-wrap: wrap;
+}
+
+.hero-meta .label {
+  display: block;
+  font-size: 11px;
+  color: var(--fg-subtle);
+  margin-bottom: 8px;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+}
+
+.hero-meta .value {
+  color: var(--fg);
+  font-weight: 600;
+  font-size: 14px;
+}
+
+.scroll-indicator {
+  position: absolute;
+  bottom: 48px;
+  left: 48px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  color: var(--fg-muted);
+  letter-spacing: 0.15em;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  text-transform: uppercase;
+  font-weight: 600;
+}
+
+.scroll-indicator::before {
+  content: '';
+  width: 32px;
+  height: 2px;
+  background: var(--accent);
+  display: inline-block;
+  animation: pulse 2s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 0.3; transform: translateX(0); }
+  50% { opacity: 1; transform: translateX(6px); }
+}
+
+@media (max-width: 768px) {
+  .scroll-indicator { left: 24px; bottom: 32px; }
+}
+
+/* ============ PROBLEM TIMELINE ============ */
+.problem-visual {
+  margin-top: 72px;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  overflow: hidden;
+  max-width: 1100px;
+}
+
+.problem-row {
+  display: grid;
+  grid-template-columns: 160px 1fr;
+  align-items: center;
+  padding: 36px 44px;
+  border-bottom: 1px solid var(--border);
+  gap: 24px;
+}
+
+.problem-row:last-child { border-bottom: none; }
+.problem-row.old { background: var(--bg-subtle); }
+
+.problem-row .label {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 12px;
+  color: var(--fg-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  font-weight: 700;
+}
+
+.problem-row.old .label { color: var(--fg-subtle); }
+.problem-row.new .label { color: var(--accent); }
+
+.problem-row .phases {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 14px;
+  flex-wrap: wrap;
+}
+
+.problem-row.old .phases span.phase {
+  color: var(--fg-subtle);
+  text-decoration: line-through;
+}
+
+.problem-row.new .phases span.phase {
+  color: var(--fg);
+  font-weight: 700;
+}
+
+.phases .arrow {
+  color: var(--fg-subtle);
+  margin: 0 4px;
+}
+
+.phases .ts {
+  margin-left: 16px;
+  color: var(--fg-subtle);
+  font-style: italic;
+}
+
+@media (max-width: 768px) {
+  .problem-row {
+    grid-template-columns: 1fr;
+    padding: 24px 28px;
+    gap: 12px;
+  }
+}
+
+/* ============ PRINCIPLES (numbered list) ============ */
+.principles {
+  margin-top: 64px;
+  display: grid;
+  gap: 1px;
+  background: var(--border);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  overflow: hidden;
+}
+
+.principle {
+  background: var(--bg);
+  padding: 36px 44px;
+  display: grid;
+  grid-template-columns: 80px 1fr;
+  gap: 24px;
+  align-items: start;
+}
+
+.principle .num {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--accent);
+  padding-top: 4px;
+  letter-spacing: 0.02em;
+}
+
+.principle h3 { font-size: 23px; margin-bottom: 12px; }
+.principle p { font-size: 17px; max-width: 780px; }
+
+@media (max-width: 768px) {
+  .principle {
+    grid-template-columns: 1fr;
+    padding: 28px 28px;
+    gap: 8px;
+  }
+}
+
+/* ============ COMPARE (SaaS vs Git) ============ */
+.compare {
+  margin-top: 64px;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  overflow: hidden;
+}
+
+@media (max-width: 768px) {
+  .compare { grid-template-columns: 1fr; }
+}
+
+.compare-col { padding: 44px 40px; }
+
+.compare-col.old {
+  background: var(--bg-subtle);
+  border-right: 1px solid var(--border);
+}
+
+@media (max-width: 768px) {
+  .compare-col.old {
+    border-right: none;
+    border-bottom: 1px solid var(--border);
+  }
+}
+
+.compare-col h4 {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: var(--fg-muted);
+  margin-bottom: 28px;
+}
+
+.compare-col.new h4 { color: var(--accent); }
+
+.compare-item {
+  padding: 18px 0;
+  border-bottom: 1px solid var(--border);
+  font-size: 17px;
+  line-height: 1.5;
+}
+
+.compare-item:last-child { border-bottom: none; }
+
+.compare-col.old .compare-item {
+  color: var(--fg-subtle);
+  text-decoration: line-through;
+  text-decoration-thickness: 1px;
+}
+
+.compare-col.new .compare-item {
+  color: var(--fg);
+  font-weight: 600;
+}
+
+/* ============ CALLOUT ============ */
+.callout {
+  margin-top: 56px;
+  padding: 48px 52px;
+  background: var(--fg);
+  color: var(--bg);
+  border-radius: 14px;
+  max-width: 960px;
+}
+
+.callout .label {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  color: #93c5fd;
+  margin-bottom: 20px;
+  font-weight: 700;
+}
+
+.callout .text {
+  font-size: clamp(22px, 2.5vw, 30px);
+  font-weight: 600;
+  line-height: 1.35;
+  letter-spacing: -0.01em;
+}
+
+.callout .text em {
+  font-style: normal;
+  background: rgba(255, 255, 255, 0.14);
+  padding: 2px 10px;
+  border-radius: 5px;
+  color: #fff;
+}
+
+@media (max-width: 768px) {
+  .callout { padding: 36px 32px; }
+}
+
+/* ============ ARCHITECTURE STACK ============ */
+.arch {
+  margin-top: 72px;
+  max-width: 760px;
+}
+
+.arch-layer {
+  padding: 30px 36px;
+  border: 1.5px solid var(--border);
+  border-radius: 12px;
+  margin-bottom: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  background: var(--bg);
+  position: relative;
+  transition: transform 0.15s ease;
+}
+
+.arch-layer.highlight {
+  border: 2px solid var(--accent);
+  background: var(--bg);
+  box-shadow: 0 18px 50px -12px rgba(37, 99, 235, 0.22);
+  margin-top: 28px;
+  margin-bottom: 32px;
+}
+
+.arch-layer.highlight::before {
+  content: 'FRAMEWORK LAYER — THAT IS US';
+  position: absolute;
+  top: -12px;
+  left: 28px;
+  background: var(--accent);
+  color: #fff;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 6px 12px;
+  border-radius: 4px;
+  letter-spacing: 0.1em;
+}
+
+.arch-layer .title {
+  font-weight: 700;
+  font-size: 18px;
+  margin-bottom: 6px;
+  color: var(--fg);
+}
+
+.arch-layer .desc {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 13px;
+  color: var(--fg-muted);
+}
+
+.arch-layer .tag {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 12px;
+  color: var(--fg-muted);
+  font-weight: 700;
+  padding: 5px 11px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+}
+
+.arch-layer.highlight .tag {
+  background: var(--accent);
+  color: #fff;
+  border-color: var(--accent);
+}
+
+.arch-note {
+  margin-top: 48px;
+  padding: 28px 32px;
+  background: var(--bg-subtle);
+  border-left: 4px solid var(--accent);
+  border-radius: 0 8px 8px 0;
+  max-width: 820px;
+}
+
+.arch-note strong {
+  color: var(--accent);
+  font-weight: 700;
+}
+
+.arch-note p {
+  font-size: 17px;
+  max-width: none;
+  color: var(--fg);
+  line-height: 1.65;
+}
+
+/* ============ DIALOGUE (Why Apps) ============ */
+.dialogue {
+  margin-top: 56px;
+  border-left: 4px solid var(--accent);
+  padding: 12px 36px;
+  max-width: 820px;
+}
+
+.dialogue .q {
+  font-size: clamp(20px, 2vw, 25px);
+  font-weight: 500;
+  color: var(--fg);
+  margin-bottom: 24px;
+  font-style: italic;
+  line-height: 1.4;
+}
+
+.dialogue .q::before {
+  content: '"';
+  color: var(--accent);
+  margin-right: 4px;
+  font-weight: 700;
+}
+
+.dialogue .q::after {
+  content: '"';
+  color: var(--accent);
+  margin-left: 4px;
+  font-weight: 700;
+}
+
+.dialogue .a {
+  font-size: 18px;
+  color: var(--fg-muted);
+  line-height: 1.7;
+  margin-bottom: 14px;
+  max-width: 740px;
+}
+
+.dialogue .a strong { color: var(--fg); font-weight: 700; }
+
+.dialogue .punch {
+  font-size: 20px;
+  color: var(--fg);
+  font-weight: 600;
+  margin-top: 24px;
+  padding-top: 24px;
+  border-top: 1px dashed var(--border-strong);
+  max-width: 740px;
+  line-height: 1.5;
+}
+
+/* ============ EXAMPLES ============ */
+.examples {
+  margin-top: 48px;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 24px;
+  max-width: 820px;
+}
+
+@media (max-width: 768px) {
+  .examples { grid-template-columns: 1fr; }
+}
+
+.example {
+  padding: 28px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--bg);
+}
+
+.example.becomes-app {
+  background: var(--fg);
+  border-color: var(--fg);
+}
+
+.example .tag {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  padding: 6px 11px;
+  border-radius: 5px;
+  font-weight: 700;
+  display: inline-block;
+  margin-bottom: 18px;
+}
+
+.example.prompt-only .tag {
+  background: var(--bg-muted);
+  color: var(--fg-muted);
+}
+
+.example.becomes-app .tag {
+  background: var(--accent);
+  color: #fff;
+}
+
+.example p.quote {
+  font-size: 17px;
+  color: var(--fg);
+  margin-bottom: 12px;
+  max-width: none;
+  font-weight: 500;
+  line-height: 1.5;
+}
+
+.example.becomes-app p.quote { color: #fff; }
+
+.example .verdict {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 12px;
+  color: var(--fg-subtle);
+  margin-top: 12px;
+}
+
+.example.becomes-app .verdict { color: rgba(255, 255, 255, 0.6); }
+
+/* ============ MOAT GRID ============ */
+.moat-grid {
+  margin-top: 64px;
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 1px;
+  background: var(--border);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  overflow: hidden;
+}
+
+@media (max-width: 768px) {
+  .moat-grid { grid-template-columns: 1fr; }
+}
+
+.moat-card {
+  background: var(--bg);
+  padding: 44px 40px;
+  min-height: 240px;
+}
+
+.moat-card .num {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 13px;
+  color: var(--accent);
+  font-weight: 700;
+  margin-bottom: 22px;
+  display: block;
+  letter-spacing: 0.02em;
+}
+
+.moat-card h3 {
+  font-size: 24px;
+  margin-bottom: 14px;
+}
+
+.moat-card p {
+  font-size: 16px;
+  line-height: 1.65;
+  max-width: none;
+}
+
+/* ============ COMPETITION ============ */
+.competition {
+  margin-top: 64px;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 20px;
+}
+
+@media (max-width: 900px) {
+  .competition { grid-template-columns: 1fr; }
+}
+
+.comp-card {
+  padding: 36px 32px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--bg-subtle);
+  display: flex;
+  flex-direction: column;
+}
+
+.comp-card.ours {
+  background: var(--fg);
+  color: var(--bg);
+  border-color: var(--fg);
+  transform: scale(1.02);
+  box-shadow: 0 20px 60px -16px rgba(0, 0, 0, 0.2);
+}
+
+@media (max-width: 900px) {
+  .comp-card.ours { transform: none; }
+}
+
+.comp-card .cat {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: var(--fg-subtle);
+  margin-bottom: 14px;
+  font-weight: 600;
+}
+
+.comp-card.ours .cat { color: #93c5fd; font-weight: 700; }
+
+.comp-card h3 {
+  font-size: 23px;
+  margin-bottom: 8px;
+}
+
+.comp-card.ours h3 { color: #fff; }
+
+.comp-card .audience {
+  font-size: 15px;
+  color: var(--fg-muted);
+  margin-bottom: 24px;
+}
+
+.comp-card.ours .audience { color: rgba(255, 255, 255, 0.75); }
+
+.comp-card .limits {
+  font-size: 14px;
+  color: var(--fg-muted);
+  padding-top: 20px;
+  border-top: 1px solid var(--border);
+  margin-top: auto;
+  line-height: 1.65;
+}
+
+.comp-card.ours .limits {
+  color: rgba(255, 255, 255, 0.92);
+  border-color: rgba(255, 255, 255, 0.18);
+  font-weight: 500;
+}
+
+/* ============ FINAL / ASK ============ */
+.final {
+  padding: 180px 48px 140px;
+  max-width: 1280px;
+  margin: 0 auto;
+}
+
+.final h2 { margin-bottom: 48px; max-width: 900px; }
+
+.final .contact {
+  display: grid;
+  grid-template-columns: repeat(3, auto);
+  gap: 56px;
+  padding-top: 48px;
+  border-top: 1px solid var(--border);
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 13px;
+  flex-wrap: wrap;
+  justify-content: start;
+  margin-top: 64px;
+}
+
+@media (max-width: 768px) {
+  .final { padding: 120px 24px 80px; }
+  .final .contact {
+    grid-template-columns: 1fr;
+    gap: 24px;
+  }
+}
+
+.final .contact .label {
+  color: var(--fg-subtle);
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  margin-bottom: 10px;
+  display: block;
+  font-weight: 600;
+}
+
+.final .contact .value {
+  color: var(--fg);
+  font-weight: 600;
+  font-size: 15px;
+}
+
+/* ============ PRINT (PDF export) ============ */
+@media print {
+  nav.top { display: none; }
+  section, .final {
+    padding: 60px 40px;
+    page-break-inside: avoid;
+    page-break-after: always;
+  }
+  .hero { min-height: auto; }
+  .scroll-indicator { display: none; }
+  body { font-size: 14px; }
+  .callout, .comp-card.ours, .example.becomes-app {
+    background: #fff !important;
+    color: #000 !important;
+    border: 2px solid #000 !important;
+  }
+  .callout .text em { background: #eee !important; color: #000 !important; }
+}
+</style>
+</head>
+<body>
+
+<!-- ============ NAV ============ -->
+<nav class="top">
+  <div class="inner">
+    <div class="logo" onclick="window.scrollTo({top: 0, behavior: 'smooth'})">
+      <span class="logo-mark">F</span>
+      Forge
+    </div>
+    <div class="meta">PITCH / 2026 Q2 / 5-MIN</div>
+  </div>
+</nav>
+
+<!-- ============ HERO ============ -->
+<section class="hero">
+  <div class="eyebrow">In-App Builder Framework / AI-Native</div>
+  <h1>每个业务系统,<br>都应该长出<br>自己的 <span class="accent">App Layer</span>。</h1>
+  <p class="sub">
+    不是外挂的 agent 商店。不是又一个 SaaS。<br>
+    是一个嵌入在 DCE / CRM / ERP 内部的 framework —— 让企业终端用户通过 prompt 自助生成应用,继承宿主系统的权限和数据上下文。
+  </p>
+  <div class="hero-meta">
+    <div>
+      <span class="label">Category</span>
+      <span class="value">Enterprise AI Infrastructure</span>
+    </div>
+    <div>
+      <span class="label">Format</span>
+      <span class="value">Embedded Framework</span>
+    </div>
+    <div>
+      <span class="label">LLM</span>
+      <span class="value">Model-Agnostic</span>
+    </div>
+    <div>
+      <span class="label">Stage</span>
+      <span class="value">Seeking Seed</span>
+    </div>
+  </div>
+  <div class="scroll-indicator">Scroll</div>
+</section>
+
+<div class="divider"></div>
+
+<!-- ============ 01 PROBLEM ============ -->
+<section>
+  <div class="eyebrow">01 / Problem</div>
+  <h2>传统 SDLC 的死局:<br>做不动,也扔不掉。</h2>
+  <p class="lead">
+    企业里每一个真实需求都是定制化的。但传统软件开发生命周期太重 —— 立项、设计、开发、测试、部署、维护 —— 周期以月计,成本以人力计。做出来的系统你扔不掉,因为沉没成本太高;做不动新需求,因为排期排不进。
+  </p>
+
+  <div class="problem-visual">
+    <div class="problem-row old">
+      <div class="label">Traditional SDLC</div>
+      <div class="phases">
+        <span class="phase">需求</span><span class="arrow">→</span>
+        <span class="phase">立项</span><span class="arrow">→</span>
+        <span class="phase">设计</span><span class="arrow">→</span>
+        <span class="phase">开发</span><span class="arrow">→</span>
+        <span class="phase">测试</span><span class="arrow">→</span>
+        <span class="phase">部署</span><span class="arrow">→</span>
+        <span class="phase">维护</span><span class="arrow">→</span>
+        <span class="phase">丢弃</span>
+        <span class="ts">// 月级 · 人力密集 · 无法定制化</span>
+      </div>
+    </div>
+    <div class="problem-row new">
+      <div class="label">AI-native</div>
+      <div class="phases">
+        <span class="phase">prompt</span><span class="arrow">→</span>
+        <span class="phase">生成</span><span class="arrow">→</span>
+        <span class="phase">使用</span><span class="arrow">→</span>
+        <span class="phase">fork / 丢弃</span>
+        <span class="ts">// 分钟级 · 用户自助 · 天然个人化</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<div class="divider"></div>
+
+<!-- ============ 02 INSIGHT ============ -->
+<section>
+  <div class="eyebrow">02 / Insight</div>
+  <h2>AI-Native 时代的"应用"<br>需要被重新定义。</h2>
+  <p class="lead">
+    独立的 AI agent 平台(ChatGPT、Claude.ai)和企业业务系统之间,隔着一堵墙 —— <span class="hl">权限、数据、上下文全部失联</span>。正确的形态不是在业务系统外面再搭一个 agent 平台,而是让每个业务系统自己长出 app builder。
+  </p>
+
+  <div class="principles">
+    <div class="principle">
+      <div class="num">01</div>
+      <div>
+        <h3>应用应该长在业务系统内部</h3>
+        <p>用户已登录业务系统,权限天然继承,数据天然可访问。不需要第二套权限系统,不需要 OAuth 桥接,不需要数据搬迁。这是独立 agent 产品绕不过去的痛点 —— 我们从架构上消除它。</p>
+      </div>
+    </div>
+    <div class="principle">
+      <div class="num">02</div>
+      <div>
+        <h3>代码和数据必须解耦</h3>
+        <p>应用 = 纯代码 + manifest,数据永远属于运行者。共享应用等同于 git clone,版本迭代等同于 git pull,修改等同于 git fork。"跨用户数据访问"这个问题从定义上不存在。</p>
+      </div>
+    </div>
+    <div class="principle">
+      <div class="num">03</div>
+      <div>
+        <h3>CLI/Skill 是唯一的数据访问入口</h3>
+        <p>宿主业务系统把自己的能力 CLI 化、Skill 化,应用只能通过这一层访问数据。权限检查由宿主系统原生完成 —— 我们不发明第二套权限模型,而是继承最扎实的那一套。</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<div class="divider"></div>
+
+<!-- ============ 03 MENTAL SHIFT ============ -->
+<section>
+  <div class="eyebrow">03 / Mental Shift</div>
+  <h2>用 git 模型<br>重新定义"应用"。</h2>
+  <p class="lead">
+    传统 SaaS 应用把代码、数据、权限耦合在一起 —— 这是它无法规模化定制的根源。我们把"应用"降维成纯代码对象,和 git repo 一样可复制、可分支、可合并。
+  </p>
+
+  <div class="compare">
+    <div class="compare-col old">
+      <h4>// 传统 SaaS 应用</h4>
+      <div class="compare-item">代码 + 数据 + 权限耦合</div>
+      <div class="compare-item">分享需要处理数据授权</div>
+      <div class="compare-item">跨用户访问需要权限模型</div>
+      <div class="compare-item">版本升级是运维问题</div>
+      <div class="compare-item">修改需要工单</div>
+    </div>
+    <div class="compare-col new">
+      <h4>// Forge 应用</h4>
+      <div class="compare-item">只有代码 + manifest</div>
+      <div class="compare-item">分享 = git clone</div>
+      <div class="compare-item">不存在跨用户访问</div>
+      <div class="compare-item">版本升级 = git pull</div>
+      <div class="compare-item">修改 = git fork</div>
+    </div>
+  </div>
+
+  <div class="callout">
+    <div class="label">Core Insight</div>
+    <div class="text">
+      代码是<em>公共</em>资产,数据是<em>私有</em>资产。<br>
+      两件事完全解耦 —— 这是 40 年被验证过的架构。
+    </div>
+  </div>
+</section>
+
+<div class="divider"></div>
+
+<!-- ============ 04 SOLUTION ============ -->
+<section>
+  <div class="eyebrow">04 / Solution</div>
+  <h2>Framework,不是产品。</h2>
+  <p class="lead">
+    我们不和业务系统竞争用户,我们为业务系统提供能力。Forge 作为一层 framework 嵌入在每个企业业务系统内部,成为 AI 应用的 <strong>"在地化入口"</strong>。
+  </p>
+
+  <div class="arch">
+    <div class="arch-layer">
+      <div>
+        <div class="title">L4 — User-Generated Apps</div>
+        <div class="desc">个人化 · 可 fork · 私有数据 · git 模型</div>
+      </div>
+      <div class="tag">USER SPACE</div>
+    </div>
+    <div class="arch-layer highlight">
+      <div>
+        <div class="title">L3 — Forge Framework</div>
+        <div class="desc">prompt → app · DevOps · 审计 · 版本 · 发布 · 模型中立</div>
+      </div>
+      <div class="tag">OUR LAYER</div>
+    </div>
+    <div class="arch-layer">
+      <div>
+        <div class="title">L2 — CLI / Skill Layer</div>
+        <div class="desc">能力暴露 · 权限检查 · 审计日志 · 数据访问唯一入口</div>
+      </div>
+      <div class="tag">HOST SDK</div>
+    </div>
+    <div class="arch-layer">
+      <div>
+        <div class="title">L1 — Host Business System</div>
+        <div class="desc">DCE / CRM / ERP / PaaS · 用户身份 · 业务数据</div>
+      </div>
+      <div class="tag">HOST</div>
+    </div>
+  </div>
+
+  <div class="arch-note">
+    <p><strong>模型中立是架构前提,不是 feature。</strong> Forge 接任何 LLM —— Claude、GPT、Gemini、开源模型、企业私有模型。我们不是任何一家模型商的经销商,我们是 App Layer 本身。模型是可替换的商品,App Layer 是持久的基础设施。</p>
+  </div>
+</section>
+
+<div class="divider"></div>
+
+<!-- ============ 05 WHY APPS ============ -->
+<section class="narrow">
+  <div class="eyebrow">05 / Anticipated Challenge</div>
+  <h2>如果 prompt 就够了,<br>为什么还要有"应用"?</h2>
+
+  <div class="dialogue">
+    <div class="q">应用是 GUI 时代的遗留概念。AI-native 时代用户要的是"完成任务",不是"生产应用"。用户下次要用 dashboard,为什么不直接再说一遍 prompt?</div>
+    <div class="a">对于一次性任务,prompt 确实就够了。我们不反对这一点。</div>
+    <div class="a">但有一类任务需要 <strong>可复用</strong>、<strong>可共享</strong>、<strong>可审计</strong>、<strong>可信任</strong> —— 这些任务必须被 crystallize 成应用,才能在企业环境里存活。</div>
+    <div class="punch">应用 = 值得保留的 prompt + 明确的能力边界 + 版本历史 + 可审计的执行记录。</div>
+  </div>
+
+  <div class="examples">
+    <div class="example prompt-only">
+      <span class="tag">Prompt is enough</span>
+      <p class="quote">"帮我看看这个季度销售数据。"</p>
+      <div class="verdict">// 一次性 · 无需共享 · 无需复现</div>
+    </div>
+    <div class="example becomes-app">
+      <span class="tag">Crystallize into app</span>
+      <p class="quote">"每周一早 9 点给团队发本周 top 10 告警。"</p>
+      <div class="verdict">// 周期性 · 跨用户 · 需权限 · 需审计</div>
+    </div>
+  </div>
+</section>
+
+<div class="divider"></div>
+
+<!-- ============ 06 MOAT ============ -->
+<section>
+  <div class="eyebrow">06 / Moat</div>
+  <h2>为什么 Claude Code 和<br>ChatGPT Apps 打不过这条赛道。</h2>
+
+  <div class="moat-grid">
+    <div class="moat-card">
+      <span class="num">01 — Permission Inheritance</span>
+      <h3>权限继承</h3>
+      <p>应用长在业务系统内部,已登录用户的权限天然传递。独立 AI agent 平台绕不过去的痛点 —— 我们从架构上消除了它,而不是打补丁。</p>
+    </div>
+    <div class="moat-card">
+      <span class="num">02 — Capability Layer</span>
+      <h3>CLI/Skill 能力层</h3>
+      <p>宿主系统的能力通过 CLI/Skill 暴露,技术路径已被 Claude Code + MCP 验证。我们把这个模式标准化并企业化。</p>
+    </div>
+    <div class="moat-card">
+      <span class="num">03 — Production DevOps</span>
+      <h3>DevOps 流程</h3>
+      <p>审计、review、版本、权限注入、灰度发布 —— 从玩具到生产的必经门槛。通用 agent 商店没有意识到这一层有多重。</p>
+    </div>
+    <div class="moat-card">
+      <span class="num">04 — Federated Governance</span>
+      <h3>放权不控制</h3>
+      <p>应用泛滥由企业自治,平台只做产品体验、安全、发布流程。不试图"管理所有应用",因此能 scale 到任意多租户。</p>
+    </div>
+  </div>
+</section>
+
+<div class="divider"></div>
+
+<!-- ============ 07 COMPETITION ============ -->
+<section>
+  <div class="eyebrow">07 / Competitive Landscape</div>
+  <h2>第三赛道。</h2>
+  <p class="lead">
+    市场上现有的 AI 应用工具只服务两类人:开发者,和通用 C 端用户。<span class="hl">企业内部"有权限、懂业务、但不写代码"</span>的那群人,今天是一片空白。这是 Forge 的 target user,也是最大的价值洼地。
+  </p>
+
+  <div class="competition">
+    <div class="comp-card">
+      <div class="cat">Developer Tools</div>
+      <h3>Claude Code</h3>
+      <div class="audience">面向:软件开发者</div>
+      <div class="limits">
+        需要代码能力 ·<br>
+        不在业务系统内 ·<br>
+        无原生权限继承
+      </div>
+    </div>
+    <div class="comp-card">
+      <div class="cat">Consumer Agent Store</div>
+      <h3>ChatGPT Apps</h3>
+      <div class="audience">面向:通用 C 端用户</div>
+      <div class="limits">
+        外挂于业务系统 ·<br>
+        OAuth 桥接脆弱 ·<br>
+        无法继承企业权限
+      </div>
+    </div>
+    <div class="comp-card ours">
+      <div class="cat">Enterprise Framework</div>
+      <h3>Forge</h3>
+      <div class="audience">面向:业务系统的终端用户</div>
+      <div class="limits">
+        嵌入式 ·<br>
+        原生权限继承 ·<br>
+        DevOps 流程 ·<br>
+        模型中立
+      </div>
+    </div>
+  </div>
+</section>
+
+<div class="divider"></div>
+
+<!-- ============ 08 GTM ============ -->
+<section class="narrow">
+  <div class="eyebrow">08 / Go-to-Market</div>
+  <h2>Framework 的杠杆。</h2>
+  <p class="lead">
+    我们不自己建业务系统,我们 OEM 给每个已有用户基数的企业业务系统厂商 —— DCE、各类 PaaS / 私有云、CRM、ERP。<span class="hl">他们的用户、他们的数据、他们的权限</span>。我们只提供 App Layer 和 DevOps 能力。
+  </p>
+
+  <div class="principles" style="margin-top: 56px;">
+    <div class="principle">
+      <div class="num">→ 01</div>
+      <div>
+        <h3>复用宿主系统的全量用户</h3>
+        <p>不需要从零获客。每一个集成 Forge 的业务系统,它的全量用户都自动是 Forge 的可触达 TAM。B2B2C 的杠杆模型。</p>
+      </div>
+    </div>
+    <div class="principle">
+      <div class="num">→ 02</div>
+      <div>
+        <h3>复用宿主系统的数据和权限</h3>
+        <p>不需要搭建独立的数据层和权限系统。我们借住在宿主系统里,架构上就避开了最重的基础设施建设 —— 这在 enterprise 市场极其稀缺。</p>
+      </div>
+    </div>
+    <div class="principle">
+      <div class="num">→ 03</div>
+      <div>
+        <h3>三层收费叠加</h3>
+        <p>① Licensing fee 到业务系统厂商 · ② 按企业终端用户 seat 年费 · ③ 后续 marketplace revenue share。前两层在 day 1 就能跑起来。</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<div class="divider"></div>
+
+<!-- ============ 09 ASK ============ -->
+<div class="final">
+  <div class="eyebrow">09 / The Ask</div>
+  <h2>我们在找懂 Enterprise Infra<br>的投资人。</h2>
+  <p class="lead">
+    这不是一个 AI 应用的故事。这是一个 AI 时代<strong>企业软件交付形态</strong>的故事 —— 定义下一个十年企业应用在哪里诞生、由谁生产、怎么治理。如果你相信每个业务系统都会长出自己的 App Layer,我们希望听到你的声音。
+  </p>
+</div>
+
+</body>
+</html>
