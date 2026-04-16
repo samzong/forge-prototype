@@ -1,4 +1,4 @@
-import { SATELLITES } from '@/data/satellites'
+import { SATELLITES } from '@/mock/satellites'
 import { Satellite } from './Satellite'
 import { Orbit } from './Orbit'
 import { Core } from './Core'
