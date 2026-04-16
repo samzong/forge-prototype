@@ -1,8 +1,8 @@
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { Plus, Store, ChevronRight, Settings, LogOut } from 'lucide-react'
 import { motion } from 'framer-motion'
-import { APPS } from '@/data/apps'
-import { SESSIONS } from '@/data/sessions'
+import { APPS } from '@/mock/apps'
+import { SESSIONS } from '@/mock/sessions'
 import { App, SessionStatus } from '@/types'
 
 interface Props {

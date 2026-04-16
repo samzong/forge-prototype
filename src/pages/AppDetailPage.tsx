@@ -23,7 +23,7 @@ import {
   Clock,
   ExternalLink,
 } from 'lucide-react'
-import { APPS } from '@/data/apps'
+import { APPS } from '@/mock/apps'
 import { App } from '@/types'
 import { VibeChatTrigger, type VibeChatSubject } from '@/components/vibe-chat'
 

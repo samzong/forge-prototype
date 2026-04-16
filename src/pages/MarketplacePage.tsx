@@ -2,7 +2,7 @@ import { Link } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { Star, ArrowLeft } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
-import { APPS } from '@/data/apps'
+import { APPS } from '@/mock/apps'
 
 export default function MarketplacePage() {
   const navigate = useNavigate()
