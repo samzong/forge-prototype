@@ -63,6 +63,12 @@ export function Sidebar({ onClose }: Props) {
           {shared.map((app) => (
             <SidebarItem key={app.id} app={app} active={isActive(app.id)} onNav={go} />
           ))}
+          <button
+            onClick={() => go('/shared')}
+            className="mt-1 w-full text-left px-[11px] py-[7px] text-[11px] font-semibold text-accent hover:underline"
+          >
+            View all →
+          </button>
         </SidebarGroup>
 
         <div className="px-3 pb-4">

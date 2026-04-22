@@ -7,6 +7,10 @@ import AppDetailPage from './pages/AppDetailPage'
 import ExecutionDetailPage from './pages/ExecutionDetailPage'
 import VersionDetailPage from './pages/VersionDetailPage'
 import MarketplacePage from './pages/MarketplacePage'
+import MarketplaceDetailPage from './pages/MarketplaceDetailPage'
+import MarketplacePublishPage from './pages/MarketplacePublishPage'
+import SharedListPage from './pages/SharedListPage'
+import SharedDetailPage from './pages/SharedDetailPage'
 import SessionsPage from './pages/SessionsPage'
 
 export default function App() {
@@ -21,6 +25,10 @@ export default function App() {
         <Route path="/apps/:id/executions/:eid" element={<ExecutionDetailPage />} />
         <Route path="/apps/:id/versions/:vid" element={<VersionDetailPage />} />
         <Route path="/marketplace" element={<MarketplacePage />} />
+        <Route path="/marketplace/publish" element={<MarketplacePublishPage />} />
+        <Route path="/marketplace/:id" element={<MarketplaceDetailPage />} />
+        <Route path="/shared" element={<SharedListPage />} />
+        <Route path="/shared/:id" element={<SharedDetailPage />} />
         <Route path="/sessions" element={<SessionsPage />} />
       </Route>
     </Routes>

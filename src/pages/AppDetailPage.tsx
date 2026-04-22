@@ -1,5 +1,5 @@
 import { useMemo, useState, type ReactNode } from 'react'
-import { useParams, useNavigate, useSearchParams } from 'react-router-dom'
+import { Navigate, useParams, useNavigate, useSearchParams } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   ArrowLeft,
@@ -66,7 +66,10 @@ export default function AppDetailPage() {
     )
   }
 
-  return app.group === 'marketplace' ? <InstallView app={app} /> : <UsageView app={app} />
+  if (app.group === 'marketplace') {
+    return <Navigate to={`/marketplace/${app.id}`} replace />
+  }
+  return <UsageView app={app} />
 }
 
 /* ============================================================================
