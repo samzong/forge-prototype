@@ -29,8 +29,12 @@ import { TabBar } from './app-detail/TabBar'
 import { OverviewTab } from './app-detail/OverviewTab'
 import { ExecutionsTab } from './app-detail/ExecutionsTab'
 import { VersionsTab } from './app-detail/VersionsTab'
-import { ComingSoonTab } from './app-detail/ComingSoonTab'
-import { DEFAULT_TAB, TABS, isTab, type TabName } from './app-detail/tabs'
+import { CodeTab } from './app-detail/CodeTab'
+import { ManifestTab } from './app-detail/ManifestTab'
+import { LogsTab } from './app-detail/LogsTab'
+import { PreviewTab } from './app-detail/PreviewTab'
+import { SettingsTab } from './app-detail/SettingsTab'
+import { DEFAULT_TAB, type TabName, isTab } from './app-detail/tabs'
 import { InfoPanel, RunningPulse } from './app-detail/shared'
 
 function subjectFromApp(app: App): VibeChatSubject {
@@ -232,14 +236,20 @@ function TabContent({ tab, app }: { tab: TabName; app: App }) {
   switch (tab) {
     case 'overview':
       return <OverviewTab app={app} />
+    case 'preview':
+      return <PreviewTab app={app} />
+    case 'code':
+      return <CodeTab app={app} />
+    case 'manifest':
+      return <ManifestTab app={app} />
     case 'executions':
       return <ExecutionsTab app={app} />
     case 'versions':
       return <VersionsTab app={app} />
-    default: {
-      const meta = TABS.find((t) => t.id === tab)
-      return <ComingSoonTab tabLabel={meta?.label ?? tab} />
-    }
+    case 'logs':
+      return <LogsTab app={app} />
+    case 'settings':
+      return <SettingsTab app={app} />
   }
 }
 
