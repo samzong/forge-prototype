@@ -14,6 +14,7 @@ export default function App() {
       <Route element={<Layout />}>
         <Route path="/" element={<HomePage />} />
         <Route path="/generate" element={<GeneratePage />} />
+        <Route path="/generate/:sessionId" element={<GeneratePage />} />
         <Route path="/apps" element={<AppsListPage />} />
         <Route path="/apps/:id" element={<AppDetailPage />} />
         <Route path="/apps/:id/executions/:eid" element={<ExecutionDetailPage />} />
