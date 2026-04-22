@@ -6,6 +6,7 @@ export type TabName =
   | 'executions'
   | 'versions'
   | 'logs'
+  | 'audit'
   | 'settings'
 
 export const TABS: Array<{ id: TabName; label: string }> = [
@@ -16,6 +17,7 @@ export const TABS: Array<{ id: TabName; label: string }> = [
   { id: 'executions', label: 'Executions' },
   { id: 'versions', label: 'Versions' },
   { id: 'logs', label: 'Logs' },
+  { id: 'audit', label: 'Audit' },
   { id: 'settings', label: 'Settings' },
 ]
 

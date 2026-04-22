@@ -34,6 +34,7 @@ import { ManifestTab } from './app-detail/ManifestTab'
 import { LogsTab } from './app-detail/LogsTab'
 import { PreviewTab } from './app-detail/PreviewTab'
 import { SettingsTab } from './app-detail/SettingsTab'
+import { AuditTab } from './app-detail/AuditTab'
 import { DEFAULT_TAB, type TabName, isTab } from './app-detail/tabs'
 import { InfoPanel, RunningPulse } from './app-detail/shared'
 
@@ -248,6 +249,8 @@ function TabContent({ tab, app }: { tab: TabName; app: App }) {
       return <VersionsTab app={app} />
     case 'logs':
       return <LogsTab app={app} />
+    case 'audit':
+      return <AuditTab app={app} />
     case 'settings':
       return <SettingsTab app={app} />
   }
