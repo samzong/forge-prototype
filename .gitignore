@@ -7,4 +7,6 @@ dist-ssr
 !.vscode/extensions.json
 .idea
 *.log
-tsconfig.tsbuildinfo
+*.tsbuildinfo
+vite.config.js
+vite.config.d.ts
