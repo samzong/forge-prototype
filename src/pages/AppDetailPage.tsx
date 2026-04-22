@@ -27,6 +27,8 @@ import { EmptyState } from '@/components/state/EmptyState'
 import { ErrorState } from '@/components/state/ErrorState'
 import { TabBar } from './app-detail/TabBar'
 import { OverviewTab } from './app-detail/OverviewTab'
+import { ExecutionsTab } from './app-detail/ExecutionsTab'
+import { VersionsTab } from './app-detail/VersionsTab'
 import { ComingSoonTab } from './app-detail/ComingSoonTab'
 import { DEFAULT_TAB, TABS, isTab, type TabName } from './app-detail/tabs'
 import { InfoPanel, RunningPulse } from './app-detail/shared'
@@ -227,9 +229,18 @@ function UsageView({ app }: { app: App }) {
 }
 
 function TabContent({ tab, app }: { tab: TabName; app: App }) {
-  if (tab === 'overview') return <OverviewTab app={app} />
-  const meta = TABS.find((t) => t.id === tab)
-  return <ComingSoonTab tabLabel={meta?.label ?? tab} />
+  switch (tab) {
+    case 'overview':
+      return <OverviewTab app={app} />
+    case 'executions':
+      return <ExecutionsTab app={app} />
+    case 'versions':
+      return <VersionsTab app={app} />
+    default: {
+      const meta = TABS.find((t) => t.id === tab)
+      return <ComingSoonTab tabLabel={meta?.label ?? tab} />
+    }
+  }
 }
 
 /* ============================================================================
