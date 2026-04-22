@@ -1,8 +1,8 @@
-import { Link, useLocation, useNavigate } from 'react-router-dom'
+import { useLocation, useNavigate } from 'react-router-dom'
 import { Plus, Store, ChevronRight, Settings, LogOut } from 'lucide-react'
 import { motion } from 'framer-motion'
-import { APPS } from '@/mock/apps'
-import { SESSIONS } from '@/mock/sessions'
+import { useApps } from '@/hooks/useApps'
+import { useSessions } from '@/hooks/useSessions'
 import { App, SessionStatus } from '@/types'
 
 interface Props {
@@ -11,18 +11,22 @@ interface Props {
 
 const sessionDot: Record<SessionStatus, string> = {
   running: 'bg-accent',
-  deployed: 'bg-[#10b981]',
-  draft: 'bg-fg-subtle',
-  shared: 'bg-[#8b5cf6]',
+  completed: 'bg-[#10b981]',
   failed: 'bg-[#ef4444]',
+  cancelled: 'bg-fg-subtle',
 }
 
 export function Sidebar({ onClose }: Props) {
   const location = useLocation()
   const navigate = useNavigate()
 
-  const mine = APPS.filter((a) => a.group === 'mine')
-  const shared = APPS.filter((a) => a.group === 'shared')
+  const { data: mineRes } = useApps({ group: 'mine' })
+  const { data: sharedRes } = useApps({ group: 'shared' })
+  const { data: sessionsRes } = useSessions({ sort: 'createdAt-desc' })
+
+  const mine = mineRes?.items ?? []
+  const shared = sharedRes?.items ?? []
+  const sessions = sessionsRes?.items ?? []
 
   const isActive = (id: string) => location.pathname === `/apps/${id}`
 
@@ -95,17 +99,17 @@ export function Sidebar({ onClose }: Props) {
               Recent Sessions
             </span>
             <span className="bg-bg text-fg-subtle font-mono text-[10px] font-medium px-[7px] py-[2px] rounded-full">
-              {SESSIONS.length}
+              {sessions.length}
             </span>
           </div>
 
-          {SESSIONS.map((s, i) => (
+          {sessions.map((s, i) => (
             <motion.button
               key={s.id}
               initial={{ opacity: 0, x: -8 }}
               animate={{ opacity: 1, x: 0 }}
               transition={{ delay: 0.04 + i * 0.03, duration: 0.22 }}
-              onClick={() => (s.appId ? go(`/apps/${s.appId}`) : undefined)}
+              onClick={() => (s.resultAppId ? go(`/apps/${s.resultAppId}`) : undefined)}
               className="w-full flex items-start gap-[10px] px-[11px] py-[9px] rounded-[9px] mb-[2px]
                          hover:bg-line-soft transition-colors text-left"
             >
@@ -232,9 +236,9 @@ function SidebarItem({
 }
 
 function getMetaText(app: App): string {
-  if (app.group === 'mine') return `${app.version} · ${app.status}`
-  if (app.group === 'shared') return `by ${app.owner} · ${app.relation}`
-  if (app.group === 'marketplace') return `★ ${formatStars(app.stars ?? 0)} · ${app.source}`
+  if (app.group === 'mine') return `${app.currentVersion} · ${app.status}`
+  if (app.group === 'shared') return `by ${app.ownerId} · ${app.relation ?? 'shared'}`
+  if (app.group === 'marketplace') return `★ ${formatStars(app.stars ?? 0)} · ${app.source ?? 'community'}`
   return ''
 }
 

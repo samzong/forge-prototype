@@ -1,4 +1,4 @@
-import { SATELLITES } from '@/mock/satellites'
+import { useSatellites } from '@/hooks/useSatellites'
 import { Satellite } from './Satellite'
 import { Orbit } from './Orbit'
 import { Core } from './Core'
@@ -8,13 +8,16 @@ interface Props {
 }
 
 export function Galaxy({ onSatelliteClick }: Props) {
+  const { data } = useSatellites()
+  const satellites = data?.items ?? []
+
   return (
     <div className="relative w-[500px] h-[420px] mx-auto">
       <Orbit radius={100} />
       <Orbit radius={145} />
       <Orbit radius={190} dim />
 
-      {SATELLITES.map((sat) => (
+      {satellites.map((sat) => (
         <Satellite
           key={sat.id}
           icon={sat.icon}

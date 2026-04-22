@@ -1,135 +1,87 @@
-import { App } from '@/types'
+import type { App } from '@/types'
+import { createStore, type ListQuery, type ListResult } from './store'
+import { jitter } from './delay'
+import { appsSeed } from './seed/apps'
 
-export const APPS: App[] = [
-  // ============ My Apps ============
-  {
-    id: 'biz-cockpit',
-    name: '经营驾驶舱',
-    icon: 'BC',
-    version: 'v0.1',
-    status: 'running',
-    group: 'mine',
-    description:
-      '客户健康度 / 风险预警 / SLA / 分成结算 的统一经营视图 — Token Factory 商业大脑。',
-    capabilities: ['tf:customers:read', 'tf:sla:read', 'tf:billing:read', 'tf:audit:write'],
-    createdAt: '2026-04-15',
-    lastRun: 'live',
-    embedUrl: '/embedded/cockpit.html?embed=1',
-  },
-  {
-    id: 'team-alert-dashboard',
-    name: 'Team Alert Dashboard',
-    icon: 'DB',
-    version: 'v1.3',
-    status: 'running',
-    group: 'mine',
-    description:
-      'Weekly top alerts across platform team pods, refresh every 5 minutes and push to Feishu group.',
-    capabilities: ['dce:alerts:read', 'dce:pods:read', 'dce:teams:read', 'feishu:messages:send'],
-    createdAt: '2025-11-02',
-    lastRun: '2 hours ago',
-  },
-  {
-    id: 'weekly-sales-report',
-    name: 'Weekly Sales Report',
-    icon: 'RP',
-    version: 'v0.4',
-    status: 'draft',
-    group: 'mine',
-    description: 'Auto-generate weekly sales report grouped by region and push summary to CRM inbox.',
-    capabilities: ['crm:sales:read', 'crm:customers:read'],
-    createdAt: '2026-01-15',
-    lastRun: 'Never',
-  },
-  {
-    id: 'pr-review-bot',
-    name: 'PR Review Bot',
-    icon: 'BT',
-    version: 'v2.1',
-    status: 'running',
-    group: 'mine',
-    description:
-      'AI-powered code review assistant with Feishu integration and auto-label suggestions.',
-    capabilities: ['github:pulls:read', 'github:reviews:write', 'feishu:messages:send'],
-    createdAt: '2025-09-20',
-    lastRun: '15 minutes ago',
-  },
-  {
-    id: 'k8s-ns-watcher',
-    name: 'K8s Namespace Watcher',
-    icon: 'TK',
-    version: 'v0.2',
-    status: 'stopped',
-    group: 'mine',
-    description: 'Monitor namespace resource changes and notify on anomalies.',
-    capabilities: ['dce:namespaces:watch', 'dce:events:read'],
-    createdAt: '2026-02-10',
-    lastRun: '3 days ago',
-  },
+const store = createStore<App>(appsSeed)
 
-  // ============ Shared With Me ============
-  {
-    id: 'hr-leave-request',
-    name: 'HR Leave Request',
-    icon: 'HR',
-    version: 'v1.0',
-    status: 'running',
-    group: 'shared',
-    owner: 'HR Dept',
-    relation: 'subscribed',
-    description: 'Submit and track leave requests with auto-routing to managers and HR.',
-    capabilities: ['hr:leave:write', 'hr:employees:read'],
-    createdAt: '2025-08-01',
-  },
-  {
-    id: 'oncall-viewer',
-    name: 'Oncall Rotation Viewer',
-    icon: 'ON',
-    version: 'v1.2',
-    status: 'running',
-    group: 'shared',
-    owner: 'SRE Team',
-    relation: 'forked',
-    description: 'View current oncall rotation and escalation path for any service.',
-    capabilities: ['pagerduty:schedules:read'],
-    createdAt: '2025-10-12',
-  },
+export interface AppQuery {
+  page?: number
+  size?: number
+  group?: App['group']
+  status?: App['status']
+  viewKind?: App['viewKind']
+  ownerId?: string
+  teamId?: string
+  search?: string
+  sort?: 'updatedAt-desc' | 'createdAt-desc' | 'stars-desc' | 'name-asc'
+}
 
-  // ============ Marketplace ============
-  {
-    id: 'code-review-helper',
-    name: 'Code Review Helper',
-    icon: 'CR',
-    version: 'v3.4',
-    status: 'deployed',
-    group: 'marketplace',
-    stars: 1200,
-    source: 'dce-official',
-    description: 'Official code review assistant with multi-language support and rule presets.',
-    capabilities: ['github:pulls:read', 'github:reviews:write'],
-  },
-  {
-    id: 'release-notes-gen',
-    name: 'Release Notes Generator',
-    icon: 'RN',
-    version: 'v2.0',
-    status: 'deployed',
-    group: 'marketplace',
-    stars: 890,
-    source: 'community',
-    description: 'Auto-generate release notes from git commits and PRs, grouped by type.',
-    capabilities: ['github:commits:read', 'github:releases:write'],
-  },
-  {
-    id: 'bug-triage-bot',
-    name: 'Bug Triage Bot',
-    icon: 'BG',
-    version: 'v1.5',
-    status: 'deployed',
-    group: 'marketplace',
-    stars: 560,
-    source: 'community',
-    description: 'Auto-triage incoming bug reports with label suggestions and priority scoring.',
-    capabilities: ['github:issues:write'],
-  },
-]
+function buildListQuery(q: AppQuery = {}): ListQuery<App> {
+  const needle = q.search?.trim().toLowerCase()
+  return {
+    page: q.page,
+    size: q.size,
+    filter: (app) => {
+      if (q.group && app.group !== q.group) return false
+      if (q.status && app.status !== q.status) return false
+      if (q.viewKind && app.viewKind !== q.viewKind) return false
+      if (q.ownerId && app.ownerId !== q.ownerId) return false
+      if (q.teamId && app.teamId !== q.teamId) return false
+      if (needle) {
+        const hay = `${app.name} ${app.description}`.toLowerCase()
+        if (!hay.includes(needle)) return false
+      }
+      return true
+    },
+    sort: (a, b) => {
+      switch (q.sort ?? 'updatedAt-desc') {
+        case 'createdAt-desc':
+          return b.createdAt.localeCompare(a.createdAt)
+        case 'stars-desc':
+          return (b.stars ?? 0) - (a.stars ?? 0)
+        case 'name-asc':
+          return a.name.localeCompare(b.name)
+        case 'updatedAt-desc':
+        default:
+          return b.updatedAt.localeCompare(a.updatedAt)
+      }
+    },
+  }
+}
+
+export async function listApps(query: AppQuery = {}): Promise<ListResult<App>> {
+  await jitter()
+  return store.list(buildListQuery(query))
+}
+
+export async function getApp(id: string): Promise<App | null> {
+  await jitter()
+  return store.get(id) ?? null
+}
+
+export type CreateAppInput = Omit<App, 'createdAt' | 'updatedAt'> & {
+  createdAt?: string
+  updatedAt?: string
+}
+
+export async function createApp(input: CreateAppInput): Promise<App> {
+  await jitter()
+  const now = new Date().toISOString()
+  const app: App = {
+    ...input,
+    createdAt: input.createdAt ?? now,
+    updatedAt: input.updatedAt ?? now,
+  }
+  return store.create(app)
+}
+
+export async function updateApp(id: string, patch: Partial<App>): Promise<App> {
+  await jitter()
+  return store.update(id, { ...patch, updatedAt: new Date().toISOString() })
+}
+
+export async function deleteApp(id: string): Promise<boolean> {
+  await jitter()
+  return store.delete(id)
+}

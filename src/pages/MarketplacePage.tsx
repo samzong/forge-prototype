@@ -2,11 +2,12 @@ import { Link } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { Star, ArrowLeft } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
-import { APPS } from '@/mock/apps'
+import { useApps } from '@/hooks/useApps'
 
 export default function MarketplacePage() {
   const navigate = useNavigate()
-  const items = APPS.filter((a) => a.group === 'marketplace')
+  const { data } = useApps({ group: 'marketplace' })
+  const items = data?.items ?? []
 
   return (
     <div className="p-8">
@@ -50,7 +51,7 @@ export default function MarketplacePage() {
                   <div className="min-w-0">
                     <div className="font-bold text-fg truncate">{app.name}</div>
                     <div className="font-mono text-[10px] text-fg-subtle mt-[2px]">
-                      {app.version} · {app.source}
+                      {app.currentVersion} · {app.source}
                     </div>
                   </div>
                 </div>
