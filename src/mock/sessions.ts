@@ -29,10 +29,12 @@ export interface SessionQuery {
   status?: Session['status']
   createdBy?: string
   resultAppId?: string
+  search?: string
   sort?: 'createdAt-desc' | 'createdAt-asc'
 }
 
 function buildListQuery(q: SessionQuery = {}): ListQuery<Session> {
+  const needle = q.search?.trim().toLowerCase()
   return {
     page: q.page,
     size: q.size,
@@ -40,6 +42,7 @@ function buildListQuery(q: SessionQuery = {}): ListQuery<Session> {
       if (q.status && s.status !== q.status) return false
       if (q.createdBy && s.createdBy !== q.createdBy) return false
       if (q.resultAppId && s.resultAppId !== q.resultAppId) return false
+      if (needle && !s.prompt.toLowerCase().includes(needle)) return false
       return true
     },
     sort: (a, b) => {

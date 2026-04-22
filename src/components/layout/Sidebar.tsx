@@ -115,7 +115,7 @@ export function Sidebar({ onClose }: Props) {
               initial={{ opacity: 0, x: -8 }}
               animate={{ opacity: 1, x: 0 }}
               transition={{ delay: 0.04 + i * 0.03, duration: 0.22 }}
-              onClick={() => (s.resultAppId ? go(`/apps/${s.resultAppId}`) : undefined)}
+              onClick={() => go(`/generate/${s.id}`)}
               className="w-full flex items-start gap-[10px] px-[11px] py-[9px] rounded-[9px] mb-[2px]
                          hover:bg-line-soft transition-colors text-left"
             >
@@ -134,7 +134,7 @@ export function Sidebar({ onClose }: Props) {
           ))}
 
           <button
-            onClick={() => go('/apps')}
+            onClick={() => go('/sessions')}
             className="mt-1 w-full text-left px-[11px] py-[7px] text-[11px] font-semibold text-accent hover:underline"
           >
             View all →

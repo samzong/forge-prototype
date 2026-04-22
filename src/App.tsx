@@ -7,6 +7,7 @@ import AppDetailPage from './pages/AppDetailPage'
 import ExecutionDetailPage from './pages/ExecutionDetailPage'
 import VersionDetailPage from './pages/VersionDetailPage'
 import MarketplacePage from './pages/MarketplacePage'
+import SessionsPage from './pages/SessionsPage'
 
 export default function App() {
   return (
@@ -20,6 +21,7 @@ export default function App() {
         <Route path="/apps/:id/executions/:eid" element={<ExecutionDetailPage />} />
         <Route path="/apps/:id/versions/:vid" element={<VersionDetailPage />} />
         <Route path="/marketplace" element={<MarketplacePage />} />
+        <Route path="/sessions" element={<SessionsPage />} />
       </Route>
     </Routes>
   )
