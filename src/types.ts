@@ -322,6 +322,70 @@ export interface Share {
 }
 
 // ============================================================================
+// ApiToken — personal access tokens for CLI / CI
+// ============================================================================
+
+export interface ApiToken {
+  id: string
+  tenantId: string
+  ownerId: string
+  label: string
+  prefix: string
+  createdAt: string
+  lastUsedAt?: string
+  expiresAt?: string
+  revokedAt?: string
+  scopes: string[]
+}
+
+// ============================================================================
+// Notification — in-product notifications for the current user
+// ============================================================================
+
+export type NotificationKind =
+  | 'deploy'
+  | 'fork'
+  | 'share'
+  | 'policy'
+  | 'execution-failed'
+  | 'system'
+
+export interface Notification {
+  id: string
+  tenantId: string
+  userId: string
+  kind: NotificationKind
+  title: string
+  body: string
+  link?: string
+  read: boolean
+  createdAt: string
+}
+
+// ============================================================================
+// DeliveryChannel — where outbound notifications go (feishu, webhook)
+// ============================================================================
+
+export type DeliveryChannelKind = 'feishu' | 'webhook'
+
+export type DeliveryChannelConfig =
+  | { kind: 'feishu'; chatId: string }
+  | { kind: 'webhook'; url: string; signingSecret?: string }
+
+export interface DeliveryChannel {
+  id: string
+  tenantId: string
+  userId: string
+  kind: DeliveryChannelKind
+  label: string
+  config: DeliveryChannelConfig
+  events: string[]
+  enabled: boolean
+  verifiedAt?: string
+  createdAt: string
+}
+
+// ============================================================================
 // Satellite (UI-only, not a tenant-scoped business entity)
 // ============================================================================
 
