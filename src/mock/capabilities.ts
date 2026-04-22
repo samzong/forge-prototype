@@ -1,6 +1,7 @@
 import type { Capability } from '@/types'
 import { createStore, type ListQuery, type ListResult } from './store'
 import { jitter } from './delay'
+import { shouldInject } from './errorInjection'
 import { capabilitiesSeed } from './seed/capabilities'
 
 const store = createStore<Capability>(capabilitiesSeed)
@@ -41,10 +42,14 @@ export async function listCapabilities(
   query: CapabilityQuery = {},
 ): Promise<ListResult<Capability>> {
   await jitter()
+  const err = shouldInject('capabilities', 'list')
+  if (err) throw err
   return store.list(buildListQuery(query))
 }
 
 export async function getCapability(id: string): Promise<Capability | null> {
   await jitter()
+  const err = shouldInject('capabilities', 'get')
+  if (err) throw err
   return store.get(id) ?? null
 }
