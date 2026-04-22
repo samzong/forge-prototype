@@ -17,7 +17,6 @@ import {
   Shield,
   Zap,
   Circle,
-  ExternalLink,
 } from 'lucide-react'
 import { useApp } from '@/hooks/useApps'
 import { App } from '@/types'
@@ -67,76 +66,7 @@ export default function AppDetailPage() {
     )
   }
 
-  if (app.embedUrl) return <EmbedView app={app} />
   return app.group === 'marketplace' ? <InstallView app={app} /> : <UsageView app={app} />
-}
-
-/* ============================================================================
- * EMBED VIEW — 用 iframe 嵌入外部 HTML 原型（例：经营驾驶舱）
- * ========================================================================= */
-
-function EmbedView({ app }: { app: App }) {
-  const navigate = useNavigate()
-
-  return (
-    <motion.div
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      transition={{ duration: 0.25 }}
-      className="h-full flex flex-col"
-    >
-      <div className="px-8 pt-5 pb-4 bg-card border-b border-line shrink-0">
-        <button
-          onClick={() => navigate('/')}
-          className="text-fg-muted hover:text-fg text-sm mb-3 font-medium flex items-center gap-[6px] transition-colors"
-        >
-          <ArrowLeft size={14} /> Back
-        </button>
-        <div className="flex items-start justify-between gap-6 flex-wrap">
-          <div className="flex items-start gap-4">
-            <div className="w-[48px] h-[48px] bg-accent text-white rounded-[11px] flex items-center justify-center font-mono text-[16px] font-extrabold shrink-0">
-              {app.icon}
-            </div>
-            <div>
-              <div className="flex items-center gap-3 flex-wrap">
-                <h1 className="text-[20px] font-extrabold text-fg tracking-tight leading-tight">
-                  {app.name}
-                </h1>
-                <span className="font-mono text-[11px] px-2 py-[3px] bg-bg border border-line rounded text-fg-muted font-semibold">
-                  {app.currentVersion}
-                </span>
-                <RunningPulse on />
-              </div>
-              <div className="text-[12.5px] text-fg-muted mt-[4px] max-w-[720px] leading-[1.5]">
-                {app.description}
-              </div>
-            </div>
-          </div>
-          <div className="flex items-center gap-2">
-            <a
-              href={app.embedUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="px-[14px] py-2 bg-card border border-line rounded-[9px] text-[13px] font-semibold text-fg-muted hover:border-accent hover:text-accent flex items-center gap-[6px] transition-colors"
-            >
-              <ExternalLink size={13} /> Open in new tab
-            </a>
-            <button className="px-[14px] py-2 bg-card border border-line rounded-[9px] text-[13px] font-semibold text-fg-muted hover:border-accent hover:text-accent flex items-center gap-[6px] transition-colors">
-              <Share2 size={13} /> Share
-            </button>
-            <VibeChatTrigger subject={subjectFromApp(app)} variant="primary" label="Chat to edit" />
-          </div>
-        </div>
-      </div>
-      <div className="flex-1 min-h-0 bg-bg">
-        <iframe
-          src={app.embedUrl}
-          title={app.name}
-          className="w-full h-full border-0 block"
-        />
-      </div>
-    </motion.div>
-  )
 }
 
 /* ============================================================================

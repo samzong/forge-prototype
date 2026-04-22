@@ -70,9 +70,6 @@ export interface App {
   stars?: number
   source?: AppSource
   publishedAt?: string
-
-  /** @deprecated Remove in Sprint 3.5 when cockpit is rewritten as a dashboard renderer. */
-  embedUrl?: string
 }
 
 // ============================================================================

@@ -24,7 +24,6 @@ interface MkAppInput {
   stars?: number
   source?: AppSource
   publishedAt?: string
-  embedUrl?: string
 }
 
 function mkApp(input: MkAppInput): App {
@@ -52,7 +51,6 @@ export const appsSeed: App[] = [
     updatedAt: daysAgo(1),
     lastRunAt: hoursAgo(0),
     teamId: 'team-platform',
-    embedUrl: '/embedded/cockpit.html?embed=1',
   }),
   mkApp({
     id: 'team-alert-dashboard',
