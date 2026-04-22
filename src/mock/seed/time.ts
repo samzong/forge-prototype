@@ -16,3 +16,7 @@ export function daysAgo(n: number): string {
 export function daysFromNow(n: number): string {
   return new Date(Date.now() + n * DAY).toISOString()
 }
+
+export function hoursFromNow(n: number): string {
+  return new Date(Date.now() + n * HOUR).toISOString()
+}

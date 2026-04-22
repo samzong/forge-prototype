@@ -18,6 +18,12 @@ import SettingsTokensPage from './pages/settings/SettingsTokensPage'
 import SettingsNotificationsPage from './pages/settings/SettingsNotificationsPage'
 import SettingsCapabilitiesPage from './pages/settings/SettingsCapabilitiesPage'
 import SettingsAuditPage from './pages/settings/SettingsAuditPage'
+import LoginPage from './pages/auth/LoginPage'
+import OnboardingPage from './pages/auth/OnboardingPage'
+import NotFoundPage from './pages/error/NotFoundPage'
+import ForbiddenPage from './pages/error/ForbiddenPage'
+import ServerErrorPage from './pages/error/ServerErrorPage'
+import MaintenancePage from './pages/error/MaintenancePage'
 
 export default function App() {
   return (
@@ -45,6 +51,13 @@ export default function App() {
           <Route path="audit" element={<SettingsAuditPage />} />
         </Route>
       </Route>
+      <Route path="/login" element={<LoginPage />} />
+      <Route path="/onboarding" element={<OnboardingPage />} />
+      <Route path="/404" element={<NotFoundPage />} />
+      <Route path="/403" element={<ForbiddenPage />} />
+      <Route path="/500" element={<ServerErrorPage />} />
+      <Route path="/maintenance" element={<MaintenancePage />} />
+      <Route path="*" element={<Navigate to="/404" replace />} />
     </Routes>
   )
 }

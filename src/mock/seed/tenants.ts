@@ -1,5 +1,5 @@
 import type { Tenant } from '@/types'
-import { daysAgo } from './time'
+import { daysAgo, hoursFromNow } from './time'
 
 export const tenantsSeed: Tenant[] = [
   {
@@ -8,6 +8,7 @@ export const tenantsSeed: Tenant[] = [
     hostSystemKind: 'dce',
     status: 'active',
     createdAt: daysAgo(400),
+    maintenanceUntil: hoursFromNow(0.75),
   },
 ]
 

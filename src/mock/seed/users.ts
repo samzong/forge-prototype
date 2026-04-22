@@ -12,6 +12,7 @@ export const usersSeed: User[] = [
     teamIds: ['team-platform'],
     roles: ['admin'],
     createdAt: daysAgo(300),
+    onboarded: true,
   },
   {
     id: 'u-leah',
@@ -23,6 +24,7 @@ export const usersSeed: User[] = [
     teamIds: ['team-platform'],
     roles: ['user'],
     createdAt: daysAgo(220),
+    onboarded: true,
   },
   {
     id: 'u-marcus',
@@ -34,6 +36,7 @@ export const usersSeed: User[] = [
     teamIds: ['team-sre'],
     roles: ['team-manager'],
     createdAt: daysAgo(180),
+    onboarded: true,
   },
 ]
 

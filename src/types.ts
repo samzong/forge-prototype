@@ -11,6 +11,7 @@ export interface Tenant {
   hostSystemKind: HostSystemKind
   status: TenantStatus
   createdAt: string
+  maintenanceUntil?: string
 }
 
 // ============================================================================
@@ -30,6 +31,7 @@ export interface User {
   teamIds: string[]
   roles: Role[]
   createdAt: string
+  onboarded?: boolean
 }
 
 // ============================================================================
