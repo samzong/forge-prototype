@@ -4,6 +4,7 @@ import { motion } from 'framer-motion'
 import { useApps } from '@/hooks/useApps'
 import { useSessions } from '@/hooks/useSessions'
 import { App, SessionStatus } from '@/types'
+import { RelativeTime } from '@/components/RelativeTime'
 
 interface Props {
   onClose: () => void
@@ -22,10 +23,12 @@ export function Sidebar({ onClose }: Props) {
 
   const { data: mineRes } = useApps({ group: 'mine' })
   const { data: sharedRes } = useApps({ group: 'shared' })
+  const { data: marketRes } = useApps({ group: 'marketplace' })
   const { data: sessionsRes } = useSessions({ sort: 'createdAt-desc' })
 
   const mine = mineRes?.items ?? []
   const shared = sharedRes?.items ?? []
+  const marketTotal = marketRes?.total ?? 0
   const sessions = sessionsRes?.items ?? []
 
   const isActive = (id: string) => location.pathname === `/apps/${id}`
@@ -85,7 +88,9 @@ export function Sidebar({ onClose }: Props) {
               >
                 Marketplace
               </div>
-              <div className="font-mono text-[10px] text-fg-subtle mt-[3px]">132 apps</div>
+              <div className="font-mono text-[10px] text-fg-subtle mt-[3px]">
+                {marketTotal} apps
+              </div>
             </div>
             <ChevronRight size={14} className="text-fg-subtle shrink-0" />
           </button>
@@ -119,7 +124,7 @@ export function Sidebar({ onClose }: Props) {
               <div className="flex-1 min-w-0">
                 <div className="text-[12.5px] text-fg leading-[1.4] line-clamp-2">{s.prompt}</div>
                 <div className="font-mono text-[10px] text-fg-subtle mt-[3px] flex items-center gap-[6px]">
-                  <span>{s.timeLabel}</span>
+                  <RelativeTime iso={s.createdAt} />
                   <span className="text-line">·</span>
                   <span className="uppercase tracking-wider">{s.status}</span>
                 </div>
@@ -127,7 +132,10 @@ export function Sidebar({ onClose }: Props) {
             </motion.button>
           ))}
 
-          <button className="mt-1 w-full text-left px-[11px] py-[7px] text-[11px] font-semibold text-accent hover:underline">
+          <button
+            onClick={() => go('/apps')}
+            className="mt-1 w-full text-left px-[11px] py-[7px] text-[11px] font-semibold text-accent hover:underline"
+          >
             View all →
           </button>
         </div>

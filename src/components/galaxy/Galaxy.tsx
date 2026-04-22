@@ -2,14 +2,23 @@ import { useSatellites } from '@/hooks/useSatellites'
 import { Satellite } from './Satellite'
 import { Orbit } from './Orbit'
 import { Core } from './Core'
+import { ErrorState } from '@/components/state/ErrorState'
 
 interface Props {
   onSatelliteClick?: (hintPrompt: string) => void
 }
 
 export function Galaxy({ onSatelliteClick }: Props) {
-  const { data } = useSatellites()
+  const { data, error, refresh } = useSatellites()
   const satellites = data?.items ?? []
+
+  if (error) {
+    return (
+      <div className="relative w-[500px] h-[420px] mx-auto flex items-center justify-center">
+        <ErrorState error={error} onRetry={refresh} />
+      </div>
+    )
+  }
 
   return (
     <div className="relative w-[500px] h-[420px] mx-auto">

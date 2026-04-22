@@ -26,6 +26,9 @@ import {
 import { useApp } from '@/hooks/useApps'
 import { App } from '@/types'
 import { VibeChatTrigger, type VibeChatSubject } from '@/components/vibe-chat'
+import { LoadingState } from '@/components/state/LoadingState'
+import { EmptyState } from '@/components/state/EmptyState'
+import { ErrorState } from '@/components/state/ErrorState'
 
 function subjectFromApp(app: App): VibeChatSubject {
   return {
@@ -41,24 +44,18 @@ function subjectFromApp(app: App): VibeChatSubject {
 export default function AppDetailPage() {
   const { id } = useParams()
   const navigate = useNavigate()
-  const { data: app, loading } = useApp(id)
+  const { data: app, loading, error, refresh } = useApp(id)
 
-  if (loading) {
-    return (
-      <div className="p-8 text-center">
-        <div className="text-fg-muted">Loading...</div>
-      </div>
-    )
-  }
-
+  if (loading) return <LoadingState label="Loading app…" className="p-8" />
+  if (error) return <ErrorState error={error} onRetry={refresh} className="p-8" />
   if (!app) {
     return (
-      <div className="p-8 text-center">
-        <div className="text-fg-muted">App not found.</div>
-        <button onClick={() => navigate('/')} className="mt-4 text-accent">
-          ← Back
-        </button>
-      </div>
+      <EmptyState
+        message="App not found"
+        ctaLabel="← Back"
+        onCta={() => navigate('/')}
+        className="p-8"
+      />
     )
   }
 

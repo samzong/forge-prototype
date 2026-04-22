@@ -1,6 +1,7 @@
 import type { User } from '@/types'
 import { createStore, type ListQuery, type ListResult } from './store'
 import { jitter } from './delay'
+import { shouldInject } from './errorInjection'
 import { usersSeed, CURRENT_USER_ID } from './seed/users'
 
 const store = createStore<User>(usersSeed)
@@ -27,6 +28,8 @@ function buildListQuery(q: UserQuery = {}): ListQuery<User> {
 
 export async function getCurrentUser(): Promise<User> {
   await jitter()
+  const err = shouldInject('users', 'getCurrent')
+  if (err) throw err
   const u = store.get(CURRENT_USER_ID)
   if (!u) throw new Error(`getCurrentUser: seed user "${CURRENT_USER_ID}" missing`)
   return u
@@ -34,10 +37,14 @@ export async function getCurrentUser(): Promise<User> {
 
 export async function getUser(id: string): Promise<User | null> {
   await jitter()
+  const err = shouldInject('users', 'get')
+  if (err) throw err
   return store.get(id) ?? null
 }
 
 export async function listUsers(query: UserQuery = {}): Promise<ListResult<User>> {
   await jitter()
+  const err = shouldInject('users', 'list')
+  if (err) throw err
   return store.list(buildListQuery(query))
 }

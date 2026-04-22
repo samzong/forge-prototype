@@ -1,6 +1,7 @@
 import type { Session } from '@/types'
 import { createStore, type ListQuery, type ListResult } from './store'
 import { jitter } from './delay'
+import { shouldInject } from './errorInjection'
 import { sessionsSeed } from './seed/sessions'
 
 const store = createStore<Session>(sessionsSeed)
@@ -33,10 +34,14 @@ function buildListQuery(q: SessionQuery = {}): ListQuery<Session> {
 
 export async function listSessions(query: SessionQuery = {}): Promise<ListResult<Session>> {
   await jitter()
+  const err = shouldInject('sessions', 'list')
+  if (err) throw err
   return store.list(buildListQuery(query))
 }
 
 export async function getSession(id: string): Promise<Session | null> {
   await jitter()
+  const err = shouldInject('sessions', 'get')
+  if (err) throw err
   return store.get(id) ?? null
 }

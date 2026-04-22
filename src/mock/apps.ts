@@ -1,6 +1,7 @@
 import type { App } from '@/types'
 import { createStore, type ListQuery, type ListResult } from './store'
 import { jitter } from './delay'
+import { shouldInject } from './errorInjection'
 import { appsSeed } from './seed/apps'
 
 const store = createStore<App>(appsSeed)
@@ -52,11 +53,15 @@ function buildListQuery(q: AppQuery = {}): ListQuery<App> {
 
 export async function listApps(query: AppQuery = {}): Promise<ListResult<App>> {
   await jitter()
+  const err = shouldInject('apps', 'list')
+  if (err) throw err
   return store.list(buildListQuery(query))
 }
 
 export async function getApp(id: string): Promise<App | null> {
   await jitter()
+  const err = shouldInject('apps', 'get')
+  if (err) throw err
   return store.get(id) ?? null
 }
 
@@ -67,6 +72,8 @@ export type CreateAppInput = Omit<App, 'createdAt' | 'updatedAt'> & {
 
 export async function createApp(input: CreateAppInput): Promise<App> {
   await jitter()
+  const err = shouldInject('apps', 'create')
+  if (err) throw err
   const now = new Date().toISOString()
   const app: App = {
     ...input,
@@ -78,10 +85,14 @@ export async function createApp(input: CreateAppInput): Promise<App> {
 
 export async function updateApp(id: string, patch: Partial<App>): Promise<App> {
   await jitter()
+  const err = shouldInject('apps', 'update')
+  if (err) throw err
   return store.update(id, { ...patch, updatedAt: new Date().toISOString() })
 }
 
 export async function deleteApp(id: string): Promise<boolean> {
   await jitter()
+  const err = shouldInject('apps', 'delete')
+  if (err) throw err
   return store.delete(id)
 }
