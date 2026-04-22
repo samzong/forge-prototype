@@ -12,6 +12,7 @@ interface Props {
 
 const sessionDot: Record<SessionStatus, string> = {
   running: 'bg-accent',
+  'awaiting-confirm': 'bg-[#f59e0b]',
   completed: 'bg-[#10b981]',
   failed: 'bg-[#ef4444]',
   cancelled: 'bg-fg-subtle',

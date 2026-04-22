@@ -46,6 +46,21 @@ export async function getAppVersion(id: string): Promise<AppVersion | null> {
   return store.get(id) ?? null
 }
 
+export type CreateAppVersionInput = Omit<AppVersion, 'createdAt'> & {
+  createdAt?: string
+}
+
+export async function createAppVersion(input: CreateAppVersionInput): Promise<AppVersion> {
+  await jitter()
+  const err = shouldInject('appVersions', 'create')
+  if (err) throw err
+  const version: AppVersion = {
+    ...input,
+    createdAt: input.createdAt ?? new Date().toISOString(),
+  }
+  return store.create(version)
+}
+
 export async function rollbackToVersion(appId: string, versionId: string): Promise<AppVersion> {
   await jitter()
   const err = shouldInject('appVersions', 'rollback')

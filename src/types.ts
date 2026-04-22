@@ -147,7 +147,12 @@ export interface ExecutionLog {
 // Session + SessionStage
 // ============================================================================
 
-export type SessionStatus = 'running' | 'completed' | 'failed' | 'cancelled'
+export type SessionStatus =
+  | 'running'
+  | 'awaiting-confirm'
+  | 'completed'
+  | 'failed'
+  | 'cancelled'
 export type StageName =
   | 'parse'
   | 'scope'
