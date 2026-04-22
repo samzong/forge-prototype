@@ -241,6 +241,32 @@ export interface Capability {
 }
 
 // ============================================================================
+// AuditEvent
+// ============================================================================
+
+export type AuditAction =
+  | 'deploy'
+  | 'rollback'
+  | 'update'
+  | 'delete'
+  | 'share'
+  | 'unshare'
+  | 'fork'
+
+export interface AuditEvent {
+  id: string
+  tenantId: string
+  appId: string
+  action: AuditAction
+  actorId: string
+  createdAt: string
+  targetVersionId?: string
+  fromVersionId?: string
+  note?: string
+  metadata?: Record<string, unknown>
+}
+
+// ============================================================================
 // Satellite (UI-only, not a tenant-scoped business entity)
 // ============================================================================
 

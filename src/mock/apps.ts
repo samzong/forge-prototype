@@ -3,6 +3,7 @@ import { createStore, type ListQuery, type ListResult } from './store'
 import { jitter } from './delay'
 import { shouldInject } from './errorInjection'
 import { appsSeed } from './seed/apps'
+import { recordAuditEvent } from './auditEvents'
 
 const store = createStore<App>(appsSeed)
 
@@ -87,12 +88,31 @@ export async function updateApp(id: string, patch: Partial<App>): Promise<App> {
   await jitter()
   const err = shouldInject('apps', 'update')
   if (err) throw err
-  return store.update(id, { ...patch, updatedAt: new Date().toISOString() })
+  const updated = store.update(id, { ...patch, updatedAt: new Date().toISOString() })
+  recordAuditEvent({
+    tenantId: updated.tenantId,
+    appId: updated.id,
+    action: 'update',
+    actorId: updated.ownerId,
+    note: `Updated fields: ${Object.keys(patch).join(', ') || '(none)'}.`,
+  })
+  return updated
 }
 
 export async function deleteApp(id: string): Promise<boolean> {
   await jitter()
   const err = shouldInject('apps', 'delete')
   if (err) throw err
-  return store.delete(id)
+  const existing = store.get(id)
+  const ok = store.delete(id)
+  if (ok && existing) {
+    recordAuditEvent({
+      tenantId: existing.tenantId,
+      appId: existing.id,
+      action: 'delete',
+      actorId: existing.ownerId,
+      note: `App "${existing.name}" deleted.`,
+    })
+  }
+  return ok
 }

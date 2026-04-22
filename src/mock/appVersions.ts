@@ -3,6 +3,7 @@ import { createStore, type ListQuery, type ListResult } from './store'
 import { jitter } from './delay'
 import { shouldInject } from './errorInjection'
 import { appVersionsSeed } from './seed/appVersions'
+import { recordAuditEvent } from './auditEvents'
 
 const store = createStore<AppVersion>(appVersionsSeed)
 
@@ -80,5 +81,14 @@ export async function rollbackToVersion(appId: string, versionId: string): Promi
     rolledBackFromVersionId: versionId,
     changeNote: `Rollback to ${target.version}`,
   }
-  return store.create(rollback)
+  const created = store.create(rollback)
+  recordAuditEvent({
+    tenantId: target.tenantId,
+    appId,
+    action: 'rollback',
+    actorId: target.createdBy,
+    targetVersionId: versionId,
+    note: `Rolled back to ${target.version}; new version record ${newId}.`,
+  })
+  return created
 }

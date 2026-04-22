@@ -14,6 +14,7 @@ import { shouldInject } from './errorInjection'
 import { sessionsSeed } from './seed/sessions'
 import { createApp } from './apps'
 import { createAppVersion } from './appVersions'
+import { recordAuditEvent } from './auditEvents'
 import {
   type DriverHooks,
   resumeAfterConfirm,
@@ -229,6 +230,16 @@ async function onDeployComplete(session: Session): Promise<void> {
   store.update(session.id, {
     resultAppId: appId,
     resultVersionId: versionId,
+  })
+
+  recordAuditEvent({
+    tenantId: session.tenantId,
+    appId,
+    action: 'deploy',
+    actorId: session.createdBy,
+    targetVersionId: versionId,
+    note: 'Generated via Forge session.',
+    metadata: { sessionId: session.id },
   })
 }
 
