@@ -162,6 +162,7 @@ export function Sidebar({ onClose }: Props) {
           </div>
           <button
             aria-label="Settings"
+            onClick={() => go('/settings')}
             className="w-[30px] h-[30px] rounded-[7px] flex items-center justify-center text-fg-subtle hover:bg-line-soft hover:text-fg-muted transition-colors"
           >
             <Settings size={15} />

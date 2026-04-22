@@ -1,4 +1,4 @@
-import { Routes, Route } from 'react-router-dom'
+import { Routes, Route, Navigate } from 'react-router-dom'
 import Layout from './components/layout/Layout'
 import HomePage from './pages/HomePage'
 import GeneratePage from './pages/GeneratePage'
@@ -12,6 +12,12 @@ import MarketplacePublishPage from './pages/MarketplacePublishPage'
 import SharedListPage from './pages/SharedListPage'
 import SharedDetailPage from './pages/SharedDetailPage'
 import SessionsPage from './pages/SessionsPage'
+import SettingsLayout from './pages/settings/SettingsLayout'
+import SettingsProfilePage from './pages/settings/SettingsProfilePage'
+import SettingsTokensPage from './pages/settings/SettingsTokensPage'
+import SettingsNotificationsPage from './pages/settings/SettingsNotificationsPage'
+import SettingsCapabilitiesPage from './pages/settings/SettingsCapabilitiesPage'
+import SettingsAuditPage from './pages/settings/SettingsAuditPage'
 
 export default function App() {
   return (
@@ -30,6 +36,14 @@ export default function App() {
         <Route path="/shared" element={<SharedListPage />} />
         <Route path="/shared/:id" element={<SharedDetailPage />} />
         <Route path="/sessions" element={<SessionsPage />} />
+        <Route path="/settings" element={<SettingsLayout />}>
+          <Route index element={<Navigate to="profile" replace />} />
+          <Route path="profile" element={<SettingsProfilePage />} />
+          <Route path="tokens" element={<SettingsTokensPage />} />
+          <Route path="notifications" element={<SettingsNotificationsPage />} />
+          <Route path="capabilities" element={<SettingsCapabilitiesPage />} />
+          <Route path="audit" element={<SettingsAuditPage />} />
+        </Route>
       </Route>
     </Routes>
   )
