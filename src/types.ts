@@ -76,6 +76,74 @@ export interface App {
 }
 
 // ============================================================================
+// AppVersion + AppManifest
+// ============================================================================
+
+export interface TriggerDef {
+  type: 'webhook' | 'schedule' | 'event'
+  config: Record<string, unknown>
+}
+
+export interface AppManifest {
+  runtimeIdentity: 'invoker' | 'service-account'
+  capabilities: string[]
+  schedule?: string
+  triggers?: TriggerDef[]
+  dataRetention?: 'none' | '7d' | '30d' | '90d'
+}
+
+export interface AppVersion {
+  id: string
+  tenantId: string
+  appId: string
+  version: string
+  createdAt: string
+  createdBy: string
+  sessionId?: string
+
+  manifest: AppManifest
+  handlerSource: string
+
+  changeNote?: string
+  isRollback?: boolean
+  rolledBackFromVersionId?: string
+}
+
+// ============================================================================
+// Execution + ExecutionLog
+// ============================================================================
+
+export type ExecutionStatus = 'running' | 'succeeded' | 'failed' | 'timeout' | 'cancelled'
+export type ExecutionTrigger = 'manual' | 'schedule' | 'webhook' | 'test'
+export type ExecutionLogLevel = 'debug' | 'info' | 'warn' | 'error'
+export type ExecutionLogTag = 'sandbox' | 'runtime' | 'cli' | 'render' | 'result' | 'user'
+
+export interface Execution {
+  id: string
+  tenantId: string
+  appId: string
+  versionId: string
+  status: ExecutionStatus
+  trigger: ExecutionTrigger
+  triggeredBy?: string
+  startedAt: string
+  finishedAt?: string
+  durationMs?: number
+  exitCode?: number
+  outputSummary?: string
+  errorMessage?: string
+}
+
+export interface ExecutionLog {
+  id: string
+  executionId: string
+  timestamp: string
+  level: ExecutionLogLevel
+  tag: ExecutionLogTag
+  message: string
+}
+
+// ============================================================================
 // Session + SessionStage
 // ============================================================================
 
