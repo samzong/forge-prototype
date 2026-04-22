@@ -23,7 +23,7 @@ import {
   Clock,
   ExternalLink,
 } from 'lucide-react'
-import { APPS } from '@/mock/apps'
+import { useApp } from '@/hooks/useApps'
 import { App } from '@/types'
 import { VibeChatTrigger, type VibeChatSubject } from '@/components/vibe-chat'
 
@@ -41,7 +41,15 @@ function subjectFromApp(app: App): VibeChatSubject {
 export default function AppDetailPage() {
   const { id } = useParams()
   const navigate = useNavigate()
-  const app = APPS.find((a) => a.id === id)
+  const { data: app, loading } = useApp(id)
+
+  if (loading) {
+    return (
+      <div className="p-8 text-center">
+        <div className="text-fg-muted">Loading...</div>
+      </div>
+    )
+  }
 
   if (!app) {
     return (
@@ -90,7 +98,7 @@ function EmbedView({ app }: { app: App }) {
                   {app.name}
                 </h1>
                 <span className="font-mono text-[11px] px-2 py-[3px] bg-bg border border-line rounded text-fg-muted font-semibold">
-                  {app.version}
+                  {app.currentVersion}
                 </span>
                 <RunningPulse on />
               </div>
@@ -162,7 +170,7 @@ function UsageView({ app }: { app: App }) {
                     {app.name}
                   </h1>
                   <span className="font-mono text-[11px] px-2 py-[3px] bg-bg border border-line rounded text-fg-muted font-semibold">
-                    {app.version}
+                    {app.currentVersion}
                   </span>
                   <RunningPulse on={running} />
                 </div>
@@ -383,7 +391,7 @@ function InstallView({ app }: { app: App }) {
                   {app.name}
                 </h1>
                 <span className="font-mono text-[11px] px-2 py-[3px] bg-bg border border-line rounded text-fg-muted font-semibold">
-                  {app.version}
+                  {app.currentVersion}
                 </span>
                 {app.source === 'dce-official' && (
                   <span className="font-mono text-[10px] px-[7px] py-[2px] bg-accent-ultra text-accent border border-accent/20 rounded font-bold uppercase tracking-wider">
@@ -518,7 +526,7 @@ function InstallView({ app }: { app: App }) {
           <InfoPanel title="Version History" icon={<History size={12} />}>
             <div className="space-y-2">
               {[
-                { v: app.version, d: 'latest', n: 'Stable' },
+                { v: app.currentVersion, d: 'latest', n: 'Stable' },
                 { v: 'v2.0', d: '1 month ago', n: 'Dep bump' },
                 { v: 'v1.5', d: '3 months ago', n: 'Bug fix' },
               ].map((it) => (
@@ -874,7 +882,7 @@ function CodeView() {
 
 function ManifestView({ app }: { app: App }) {
   const manifest = `app: ${app.id}
-version: ${app.version}
+version: ${app.currentVersion}
 runtime_identity: invoker
 capabilities:
 ${app.capabilities.map((c) => `  - ${c}`).join('\n')}

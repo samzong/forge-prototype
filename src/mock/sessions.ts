@@ -1,41 +1,42 @@
-import { Session } from '@/types'
+import type { Session } from '@/types'
+import { createStore, type ListQuery, type ListResult } from './store'
+import { jitter } from './delay'
+import { sessionsSeed } from './seed/sessions'
 
-export const SESSIONS: Session[] = [
-  {
-    id: 's1',
-    timeLabel: '2h ago',
-    status: 'running',
-    prompt: '每周一早 9 点给 platform 团队发本周 top 10 告警 + 当前 pod 健康状态',
-    appId: 'team-alert-dashboard',
-  },
-  {
-    id: 's2',
-    timeLabel: 'Yesterday',
-    status: 'deployed',
-    prompt: 'Generate a chart showing weekly PR merge count by repo, grouped by author',
-  },
-  {
-    id: 's3',
-    timeLabel: '3d ago',
-    status: 'draft',
-    prompt: '当 namespace 里的 HPA 扩缩容超过 3 次 / 小时, 推送到飞书 oncall 群',
-  },
-  {
-    id: 's4',
-    timeLabel: 'Last week',
-    status: 'shared',
-    prompt: '每天早 8 点汇总昨日新增 issue 并按标签分类, 生成简报发给 PM',
-  },
-  {
-    id: 's5',
-    timeLabel: 'Last week',
-    status: 'failed',
-    prompt: 'Pull MySQL slow query log and summarize top 5 by avg exec time',
-  },
-  {
-    id: 's6',
-    timeLabel: '2 weeks ago',
-    status: 'deployed',
-    prompt: 'Kubernetes namespace 资源使用 TOP 10 可视化, 每 5 分钟刷新',
-  },
-]
+const store = createStore<Session>(sessionsSeed)
+
+export interface SessionQuery {
+  page?: number
+  size?: number
+  status?: Session['status']
+  createdBy?: string
+  resultAppId?: string
+  sort?: 'createdAt-desc' | 'createdAt-asc'
+}
+
+function buildListQuery(q: SessionQuery = {}): ListQuery<Session> {
+  return {
+    page: q.page,
+    size: q.size,
+    filter: (s) => {
+      if (q.status && s.status !== q.status) return false
+      if (q.createdBy && s.createdBy !== q.createdBy) return false
+      if (q.resultAppId && s.resultAppId !== q.resultAppId) return false
+      return true
+    },
+    sort: (a, b) => {
+      const cmp = a.createdAt.localeCompare(b.createdAt)
+      return q.sort === 'createdAt-asc' ? cmp : -cmp
+    },
+  }
+}
+
+export async function listSessions(query: SessionQuery = {}): Promise<ListResult<Session>> {
+  await jitter()
+  return store.list(buildListQuery(query))
+}
+
+export async function getSession(id: string): Promise<Session | null> {
+  await jitter()
+  return store.get(id) ?? null
+}
