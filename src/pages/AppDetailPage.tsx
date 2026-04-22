@@ -1,6 +1,5 @@
-import type { ReactNode } from 'react'
-import { useParams, useNavigate } from 'react-router-dom'
-import { useState } from 'react'
+import { useMemo, useState, type ReactNode } from 'react'
+import { useParams, useNavigate, useSearchParams } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   ArrowLeft,
@@ -17,10 +16,7 @@ import {
   Users,
   Shield,
   Zap,
-  CheckCircle2,
   Circle,
-  Bell,
-  Clock,
   ExternalLink,
 } from 'lucide-react'
 import { useApp } from '@/hooks/useApps'
@@ -29,6 +25,11 @@ import { VibeChatTrigger, type VibeChatSubject } from '@/components/vibe-chat'
 import { LoadingState } from '@/components/state/LoadingState'
 import { EmptyState } from '@/components/state/EmptyState'
 import { ErrorState } from '@/components/state/ErrorState'
+import { TabBar } from './app-detail/TabBar'
+import { OverviewTab } from './app-detail/OverviewTab'
+import { ComingSoonTab } from './app-detail/ComingSoonTab'
+import { DEFAULT_TAB, TABS, isTab, type TabName } from './app-detail/tabs'
+import { InfoPanel, RunningPulse } from './app-detail/shared'
 
 function subjectFromApp(app: App): VibeChatSubject {
   return {
@@ -137,8 +138,21 @@ function EmbedView({ app }: { app: App }) {
 
 function UsageView({ app }: { app: App }) {
   const navigate = useNavigate()
+  const [params, setParams] = useSearchParams()
   const [showSource, setShowSource] = useState(false)
   const [running, setRunning] = useState(app.status === 'running')
+
+  const tab: TabName = useMemo(() => {
+    const t = params.get('tab')
+    return isTab(t) ? t : DEFAULT_TAB
+  }, [params])
+
+  const setTab = (next: TabName) => {
+    const p = new URLSearchParams(params)
+    if (next === DEFAULT_TAB) p.delete('tab')
+    else p.set('tab', next)
+    setParams(p, { replace: false })
+  }
 
   return (
     <>
@@ -148,7 +162,6 @@ function UsageView({ app }: { app: App }) {
         transition={{ duration: 0.35 }}
         className="min-h-full"
       >
-        {/* Header */}
         <div className="px-8 pt-7 pb-5 bg-card border-b border-line">
           <button
             onClick={() => navigate('/')}
@@ -179,9 +192,9 @@ function UsageView({ app }: { app: App }) {
             <div className="flex items-center gap-2">
               <button
                 onClick={() => setShowSource(true)}
-                aria-label="View source"
+                aria-label="Quick source"
                 className="w-9 h-9 rounded-[9px] border border-line text-fg-muted hover:border-accent hover:text-accent flex items-center justify-center transition-colors"
-                title="View source"
+                title="Quick source"
               >
                 <Code2 size={15} />
               </button>
@@ -203,156 +216,20 @@ function UsageView({ app }: { app: App }) {
           </div>
         </div>
 
-        {/* Body */}
-        <div className="px-8 py-6 grid gap-5" style={{ gridTemplateColumns: '1fr 320px' }}>
-          {/* Left: Live output */}
-          <div className="space-y-5">
-            {/* Stats cards */}
-            <div className="grid grid-cols-3 gap-3">
-              <StatCard label="Alerts this week" value="47" delta="+12" accent />
-              <StatCard label="Critical" value="3" delta="-1" />
-              <StatCard label="Avg MTTR" value="18m" delta="-4m" />
-            </div>
+        <TabBar active={tab} onChange={setTab} />
 
-            {/* Top alerts */}
-            <div className="bg-card border border-line rounded-[12px] overflow-hidden">
-              <div className="flex items-center justify-between px-5 pt-[14px] pb-3 border-b border-line">
-                <div className="flex items-center gap-2">
-                  <Bell size={14} className="text-accent" />
-                  <div className="font-mono text-[11px] font-bold text-fg-muted uppercase tracking-[0.1em]">
-                    Top 10 Alerts · Platform Team
-                  </div>
-                </div>
-                <div className="text-[11px] text-fg-subtle font-mono">7d window</div>
-              </div>
-              <div className="divide-y divide-line">
-                {MOCK_ALERTS.map((a, i) => (
-                  <motion.div
-                    key={i}
-                    initial={{ opacity: 0, x: -6 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    transition={{ delay: 0.05 + i * 0.04, duration: 0.22 }}
-                    className="flex items-center gap-3 px-5 py-[11px] hover:bg-line-soft transition-colors"
-                  >
-                    <SeverityDot level={a.severity} />
-                    <div className="font-mono text-[11px] text-fg-subtle w-[140px] truncate">
-                      {a.namespace}
-                    </div>
-                    <div className="flex-1 text-[13px] text-fg truncate">{a.name}</div>
-                    <div className="font-mono text-[10px] text-fg-subtle w-[48px] text-right">
-                      {a.age}
-                    </div>
-                    <div className="font-mono text-[11px] font-bold text-fg w-[32px] text-right">
-                      ×{a.count}
-                    </div>
-                  </motion.div>
-                ))}
-              </div>
-            </div>
-
-            {/* Pod health */}
-            <div className="bg-card border border-line rounded-[12px] p-5">
-              <div className="flex items-center justify-between mb-4">
-                <div className="font-mono text-[11px] font-bold text-fg-muted uppercase tracking-[0.1em]">
-                  Pod Health · 8 Namespaces
-                </div>
-                <Sparkline />
-              </div>
-              <div className="grid grid-cols-2 gap-x-6 gap-y-[10px]">
-                {MOCK_NAMESPACES.map((n, i) => (
-                  <div key={i} className="flex items-center gap-3">
-                    <div className="font-mono text-[11px] text-fg-muted w-[120px] truncate">
-                      {n.name}
-                    </div>
-                    <div className="flex-1 h-[5px] bg-bg rounded-full overflow-hidden relative">
-                      <motion.div
-                        initial={{ width: 0 }}
-                        animate={{ width: `${n.healthy}%` }}
-                        transition={{ delay: 0.15 + i * 0.04, duration: 0.5, ease: 'easeOut' }}
-                        className="absolute inset-y-0 left-0 rounded-full"
-                        style={{
-                          background: n.healthy >= 95 ? '#10b981' : n.healthy >= 85 ? '#f59e0b' : '#ef4444',
-                        }}
-                      />
-                    </div>
-                    <div className="font-mono text-[10px] font-bold text-fg w-[32px] text-right">
-                      {n.healthy}%
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            <div className="flex items-center justify-between text-[11px] font-mono text-fg-subtle px-1">
-              <div>
-                Generated 2h ago · 1.2s · runtime_identity:{' '}
-                <span className="text-fg-muted">invoker</span>
-              </div>
-              <button className="text-accent font-semibold hover:underline">
-                Download as PDF →
-              </button>
-            </div>
-          </div>
-
-          {/* Right: Run info */}
-          <div className="space-y-4">
-            <InfoPanel title="Schedule" icon={<Clock size={12} />}>
-              <div className="text-[13px] text-fg font-medium">Every Monday · 9:00 AM</div>
-              <div className="font-mono text-[11px] text-fg-subtle mt-1">cron: 0 9 * * MON</div>
-            </InfoPanel>
-
-            <InfoPanel title="Last Run">
-              <div className="flex items-center gap-2">
-                <CheckCircle2 size={13} className="text-[#10b981]" />
-                <span className="text-[13px] text-fg font-semibold">Success</span>
-                <span className="text-[11px] text-fg-subtle">· 1.2s</span>
-              </div>
-              <div className="font-mono text-[11px] text-fg-subtle mt-1">2h ago</div>
-            </InfoPanel>
-
-            <InfoPanel title="Next Run">
-              <div className="text-[13px] text-fg font-medium">in 5d 14h</div>
-              <div className="font-mono text-[11px] text-fg-subtle mt-1">Mon 2026-04-20 09:00</div>
-            </InfoPanel>
-
-            <InfoPanel title="Delivery">
-              <div className="space-y-[6px]">
-                <DeliveryRow label="feishu" target="#platform-oncall" />
-                <DeliveryRow label="email" target="platform-team@" />
-              </div>
-            </InfoPanel>
-
-            <InfoPanel title="This Month">
-              <div className="flex items-baseline gap-2">
-                <span className="text-[18px] font-extrabold text-fg">4</span>
-                <span className="text-[11px] text-fg-subtle">runs</span>
-                <span className="text-[11px] text-fg-subtle ml-auto">100% success</span>
-              </div>
-            </InfoPanel>
-
-            <InfoPanel title="Permissions" icon={<Shield size={12} />}>
-              <div className="flex flex-wrap gap-[5px]">
-                {app.capabilities.map((c) => (
-                  <span
-                    key={c}
-                    className="font-mono text-[10px] px-[7px] py-[2px] bg-bg border border-line rounded text-fg-muted font-semibold"
-                  >
-                    {c}
-                  </span>
-                ))}
-              </div>
-            </InfoPanel>
-
-            <InfoPanel title="Sharing" icon={<Users size={12} />}>
-              <div className="text-[12px] text-fg">team-only · 3 subscribers</div>
-            </InfoPanel>
-          </div>
-        </div>
+        <TabContent tab={tab} app={app} />
       </motion.div>
 
       <SourceDrawer app={app} open={showSource} onClose={() => setShowSource(false)} />
     </>
   )
+}
+
+function TabContent({ tab, app }: { tab: TabName; app: App }) {
+  if (tab === 'overview') return <OverviewTab app={app} />
+  const meta = TABS.find((t) => t.id === tab)
+  return <ComingSoonTab tabLabel={meta?.label ?? tab} />
 }
 
 /* ============================================================================
@@ -657,124 +534,6 @@ function SourceDrawer({ app, open, onClose }: { app: App; open: boolean; onClose
  * Shared pieces
  * ========================================================================= */
 
-function StatCard({
-  label,
-  value,
-  delta,
-  accent,
-}: {
-  label: string
-  value: string
-  delta: string
-  accent?: boolean
-}) {
-  const positive = delta.startsWith('-') // for MTTR and critical, "-" is good
-  const isPlus = delta.startsWith('+')
-  return (
-    <div
-      className={`rounded-[12px] border p-[14px] ${
-        accent ? 'bg-accent-ultra border-accent/20' : 'bg-card border-line'
-      }`}
-    >
-      <div className="font-mono text-[10px] text-fg-subtle uppercase tracking-wider font-semibold">
-        {label}
-      </div>
-      <div className="flex items-baseline gap-2 mt-[5px]">
-        <div className={`text-[26px] font-extrabold tracking-tight ${accent ? 'text-accent' : 'text-fg'}`}>
-          {value}
-        </div>
-        <div
-          className={`font-mono text-[11px] font-bold ${
-            isPlus ? 'text-[#ef4444]' : positive ? 'text-[#10b981]' : 'text-fg-subtle'
-          }`}
-        >
-          {delta}
-        </div>
-      </div>
-    </div>
-  )
-}
-
-function InfoPanel({
-  title,
-  icon,
-  children,
-}: {
-  title: string
-  icon?: ReactNode
-  children: ReactNode
-}) {
-  return (
-    <div className="bg-card border border-line rounded-[11px] p-[14px]">
-      <div className="flex items-center gap-[6px] font-mono text-[10px] font-bold text-fg-subtle uppercase tracking-[0.1em] mb-[9px]">
-        {icon}
-        {title}
-      </div>
-      <div>{children}</div>
-    </div>
-  )
-}
-
-function DeliveryRow({ label, target }: { label: string; target: string }) {
-  return (
-    <div className="flex items-center gap-2 text-[11px]">
-      <span className="font-mono text-fg-subtle uppercase w-[44px]">{label}</span>
-      <span className="font-mono text-fg">{target}</span>
-    </div>
-  )
-}
-
-function SeverityDot({ level }: { level: 'critical' | 'warning' | 'info' }) {
-  const map = {
-    critical: 'bg-[#ef4444]',
-    warning: 'bg-[#f59e0b]',
-    info: 'bg-accent',
-  }
-  return <span className={`w-[8px] h-[8px] rounded-full shrink-0 ${map[level]}`} />
-}
-
-function RunningPulse({ on }: { on: boolean }) {
-  if (!on) {
-    return (
-      <span className="font-mono text-[10px] uppercase px-2 py-[3px] rounded font-bold tracking-wider bg-[#f3f4f6] text-fg-muted">
-        paused
-      </span>
-    )
-  }
-  return (
-    <span className="flex items-center gap-[6px] px-2 py-[3px] rounded bg-[#d1fae5]">
-      <span className="relative w-[7px] h-[7px]">
-        <span className="absolute inset-0 rounded-full bg-[#10b981]" />
-        <motion.span
-          animate={{ scale: [1, 2.2], opacity: [0.5, 0] }}
-          transition={{ duration: 1.4, repeat: Infinity }}
-          className="absolute inset-0 rounded-full bg-[#10b981]"
-        />
-      </span>
-      <span className="font-mono text-[10px] uppercase font-bold tracking-wider text-[#065f46]">
-        running
-      </span>
-    </span>
-  )
-}
-
-function Sparkline() {
-  const points = [24, 31, 28, 42, 35, 47, 41]
-  const max = Math.max(...points)
-  const w = 80
-  const h = 24
-  const step = w / (points.length - 1)
-  const path = points
-    .map((p, i) => `${i === 0 ? 'M' : 'L'}${(i * step).toFixed(1)},${(h - (p / max) * h).toFixed(1)}`)
-    .join(' ')
-  return (
-    <svg width={w} height={h} viewBox={`0 0 ${w} ${h}`}>
-      <path d={path} fill="none" stroke="#2563eb" strokeWidth="1.5" strokeLinecap="round" />
-      <circle cx={w} cy={h - (points[points.length - 1] / max) * h} r="2" fill="#2563eb" />
-    </svg>
-  )
-}
-
 function HowStep({ n, title, children }: { n: number; title: string; children: ReactNode }) {
   return (
     <div className="flex gap-3">
@@ -911,36 +670,3 @@ function HistoryView() {
   )
 }
 
-/* ============================================================================
- * Mock data for Team Alert Dashboard
- * ========================================================================= */
-
-const MOCK_ALERTS: {
-  severity: 'critical' | 'warning' | 'info'
-  namespace: string
-  name: string
-  age: string
-  count: number
-}[] = [
-  { severity: 'critical', namespace: 'platform/ingress', name: 'nginx-ingress 5xx rate > 2%', age: '12m', count: 8 },
-  { severity: 'critical', namespace: 'platform/db', name: 'postgres replica lag > 30s', age: '1h', count: 4 },
-  { severity: 'critical', namespace: 'platform/auth', name: 'oauth token refresh failures', age: '3h', count: 3 },
-  { severity: 'warning', namespace: 'platform/api', name: 'api-gateway p99 latency > 800ms', age: '2h', count: 12 },
-  { severity: 'warning', namespace: 'platform/cache', name: 'redis memory > 85%', age: '4h', count: 6 },
-  { severity: 'warning', namespace: 'platform/queue', name: 'kafka consumer lag growing', age: '5h', count: 5 },
-  { severity: 'warning', namespace: 'platform/jobs', name: 'cron job overlap detected', age: '8h', count: 3 },
-  { severity: 'info', namespace: 'platform/metrics', name: 'prometheus scrape duration up', age: '1d', count: 2 },
-  { severity: 'info', namespace: 'platform/logs', name: 'elasticsearch shard rebalance', age: '2d', count: 2 },
-  { severity: 'info', namespace: 'platform/cdn', name: 'cache hit ratio dropped', age: '2d', count: 2 },
-]
-
-const MOCK_NAMESPACES: { name: string; healthy: number }[] = [
-  { name: 'platform/api', healthy: 98 },
-  { name: 'platform/db', healthy: 82 },
-  { name: 'platform/auth', healthy: 91 },
-  { name: 'platform/cache', healthy: 87 },
-  { name: 'platform/queue', healthy: 95 },
-  { name: 'platform/ingress', healthy: 76 },
-  { name: 'platform/metrics', healthy: 99 },
-  { name: 'platform/logs', healthy: 96 },
-]
