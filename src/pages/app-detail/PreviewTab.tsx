@@ -1,5 +1,6 @@
 import { LayoutDashboard, Bell, FileText, ClipboardList, Bot, Construction } from 'lucide-react'
 import type { App, AppViewKind } from '@/types'
+import { DashboardRenderer } from '@/components/renderers/DashboardRenderer'
 
 interface Props {
   app: App
@@ -40,6 +41,10 @@ const VIEW_KIND_META: Record<
 }
 
 export function PreviewTab({ app }: Props) {
+  if (app.viewKind === 'dashboard') {
+    return <DashboardRenderer />
+  }
+
   const meta = VIEW_KIND_META[app.viewKind]
   const Icon = meta.Icon
 
