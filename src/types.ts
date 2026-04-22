@@ -249,6 +249,10 @@ export type AuditAction =
   | 'share'
   | 'unshare'
   | 'fork'
+  | 'subscribe'
+  | 'unsubscribe'
+  | 'publish'
+  | 'unpublish'
 
 export interface AuditEvent {
   id: string
@@ -261,6 +265,60 @@ export interface AuditEvent {
   fromVersionId?: string
   note?: string
   metadata?: Record<string, unknown>
+}
+
+// ============================================================================
+// MarketplaceListing — market-side metadata that supplements an App
+// ============================================================================
+
+export interface MarketplaceListingReview {
+  count: number
+  avg: number // 0..5
+}
+
+export interface MarketplaceListingVersionEntry {
+  version: string
+  date: string // ISO
+  note: string
+}
+
+export interface MarketplaceListing {
+  id: string // 1:1 with appId, mirrored for store key consistency
+  tenantId: string
+  appId: string
+  publishedAt: string
+  publisherId: string
+  stars: number
+  forks: number
+  subscribers: number
+  reviews: MarketplaceListingReview
+  about: string
+  highlights: string[]
+  tags: string[]
+  versionLog: MarketplaceListingVersionEntry[]
+}
+
+// ============================================================================
+// Share — a share relationship between apps and recipients (user or team)
+// ============================================================================
+
+export type ShareKind = 'user' | 'team'
+export type SharePermission = 'view' | 'use' | 'edit'
+export type ShareRelation = 'subscribed' | 'forked' | 'direct'
+
+export interface Share {
+  id: string
+  tenantId: string
+  appId: string
+  sharedBy: string
+  sharedWithKind: ShareKind
+  sharedWithId: string
+  permission: SharePermission
+  relation: ShareRelation
+  forkedAppId?: string
+  forkedFromVersionId?: string
+  createdAt: string
+  note?: string
 }
 
 // ============================================================================

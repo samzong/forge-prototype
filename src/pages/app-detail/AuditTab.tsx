@@ -1,13 +1,17 @@
 import { motion } from 'framer-motion'
 import {
   AlertTriangle,
+  Download,
   GitFork,
+  Globe,
   Lock,
   Rocket,
   RotateCcw,
   Settings2,
   Share2,
   Trash2,
+  UserMinus,
+  UserPlus,
   type LucideIcon,
 } from 'lucide-react'
 import type { App, AuditAction, AuditEvent } from '@/types'
@@ -32,6 +36,10 @@ const ACTION_INFO: Record<
   share: { label: 'Share', Icon: Share2, tone: 'text-[#6d28d9] bg-[#ede9fe] border-[#ddd6fe]' },
   unshare: { label: 'Unshare', Icon: Lock, tone: 'text-fg-muted bg-bg border-line' },
   fork: { label: 'Fork', Icon: GitFork, tone: 'text-[#0e7490] bg-[#cffafe] border-[#a5f3fc]' },
+  subscribe: { label: 'Subscribe', Icon: UserPlus, tone: 'text-[#0369a1] bg-[#e0f2fe] border-[#bae6fd]' },
+  unsubscribe: { label: 'Unsubscribe', Icon: UserMinus, tone: 'text-fg-muted bg-bg border-line' },
+  publish: { label: 'Publish', Icon: Globe, tone: 'text-[#15803d] bg-[#dcfce7] border-[#bbf7d0]' },
+  unpublish: { label: 'Unpublish', Icon: Download, tone: 'text-fg-muted bg-bg border-line' },
 }
 
 export function AuditTab({ app }: Props) {
