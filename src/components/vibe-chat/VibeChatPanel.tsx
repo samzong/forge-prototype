@@ -1,18 +1,14 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
-import {
-  ArrowUp,
-  Bot,
-  Crosshair,
-  Paperclip,
-  Plus,
-  Shield,
-  Sparkles,
-  User,
-  X,
-  Zap,
-} from 'lucide-react'
-import { useVibeChat, type VibeChatFocus, type VibeChatSubject } from './VibeChatContext'
+import { Crosshair, Plus, Sparkles, X, Zap } from 'lucide-react'
+import { useVibeChat, type VibeChatSubject } from './VibeChatContext'
+import { ChatBubble } from './primitives/ChatBubble'
+import { ChatInputShell } from './primitives/ChatInputShell'
+import { ElementPicker } from './primitives/ElementPicker'
+import { FocusChip } from './primitives/FocusChip'
+import { ThinkingDots } from './primitives/ThinkingDots'
+import { renderInlineMarkdown } from './primitives/inlineMarkdown'
+import { useAutoScrollToBottom } from './primitives/useAutoScrollToBottom'
 
 type Role = 'user' | 'assistant'
 
@@ -86,9 +82,20 @@ export function VibeChatPanel() {
   )
 }
 
-/* ============================================================================
- * Header
- * ========================================================================= */
+export function VibeChatElementPicker() {
+  const { pickerActive, stopPicker, setFocus, subject, open } = useVibeChat()
+  return (
+    <ElementPicker
+      active={pickerActive}
+      onCancel={stopPicker}
+      onPick={(hit) => {
+        setFocus({ target: hit.target, label: hit.label, path: hit.path })
+        stopPicker()
+        if (subject) open(subject)
+      }}
+    />
+  )
+}
 
 function PanelHeader({
   subject,
@@ -154,17 +161,13 @@ function PanelHeader({
   )
 }
 
-/* ============================================================================
- * Body (messages + input)
- * ========================================================================= */
-
 function ChatBody({
   subject,
   focus,
   onClearFocus,
 }: {
   subject: VibeChatSubject
-  focus: VibeChatFocus | null
+  focus: { target: string; label: string; path?: string } | null
   onClearFocus: () => void
 }) {
   const initialMessages = useMemo(() => buildInitialMessages(subject), [subject.id, subject.type])
@@ -177,11 +180,7 @@ function ChatBody({
     setMessages(initialMessages)
   }, [initialMessages])
 
-  useEffect(() => {
-    const el = scrollRef.current
-    if (!el) return
-    el.scrollTop = el.scrollHeight
-  }, [messages, thinking])
+  useAutoScrollToBottom(scrollRef, [messages, thinking])
 
   const handleSend = () => {
     const text = input.trim()
@@ -221,6 +220,8 @@ function ChatBody({
     }, 900)
   }
 
+  const placeholder = focus ? `Tune ${focus.label}…` : `Ask to change ${subject.name}…`
+
   return (
     <>
       <div
@@ -228,52 +229,34 @@ function ChatBody({
         className="flex-1 overflow-y-auto scrollbar-thin px-4 py-4 space-y-4"
       >
         {messages.map((m) => (
-          <MessageRow key={m.id} message={m} />
+          <ChatBubble key={m.id} role={m.role}>
+            {m.blocks.map((b, i) => (
+              <BlockRenderer key={i} block={b} />
+            ))}
+          </ChatBubble>
         ))}
-        {thinking && <ThinkingRow />}
+        {thinking && <ThinkingDots />}
       </div>
-      <InputBar
+      <ChatInputShell
         value={input}
         onChange={setInput}
         onSend={handleSend}
         disabled={thinking}
-        subject={subject}
-        focus={focus}
-        onClearFocus={onClearFocus}
+        placeholder={placeholder}
+        topSlot={
+          <FocusChip
+            focus={focus ? { label: focus.label } : null}
+            onClear={onClearFocus}
+          />
+        }
+        footerHint={
+          <span className="flex items-center gap-1">
+            <Zap size={10} className="text-accent" />
+            every change is sandboxed + audited
+          </span>
+        }
       />
     </>
-  )
-}
-
-/* ============================================================================
- * Message rendering
- * ========================================================================= */
-
-function MessageRow({ message }: { message: Message }) {
-  const isUser = message.role === 'user'
-  return (
-    <motion.div
-      initial={{ opacity: 0, y: 6 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.22 }}
-      className="flex gap-[10px]"
-    >
-      <div
-        className={`w-[26px] h-[26px] rounded-[7px] flex items-center justify-center shrink-0 ${
-          isUser ? 'bg-line-soft text-fg-muted' : 'bg-accent-ultra text-accent border border-accent/20'
-        }`}
-      >
-        {isUser ? <User size={13} /> : <Bot size={13} />}
-      </div>
-      <div className="flex-1 min-w-0 pt-[3px] space-y-[10px]">
-        <div className="font-mono text-[10px] font-bold text-fg-subtle uppercase tracking-wider">
-          {isUser ? 'you' : 'forge · agent'}
-        </div>
-        {message.blocks.map((b, i) => (
-          <BlockRenderer key={i} block={b} />
-        ))}
-      </div>
-    </motion.div>
   )
 }
 
@@ -302,7 +285,6 @@ function BlockRenderer({ block }: { block: MessageBlock }) {
       </div>
     )
   }
-  // diff
   return (
     <div className="bg-[#0a0a0a] rounded-[9px] overflow-hidden border border-black/20">
       <div className="flex items-center justify-between px-3 h-[28px] border-b border-white/10">
@@ -329,174 +311,6 @@ function BlockRenderer({ block }: { block: MessageBlock }) {
       </div>
     </div>
   )
-}
-
-function ThinkingRow() {
-  return (
-    <motion.div
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      className="flex gap-[10px]"
-    >
-      <div className="w-[26px] h-[26px] rounded-[7px] bg-accent-ultra text-accent border border-accent/20 flex items-center justify-center shrink-0">
-        <Bot size={13} />
-      </div>
-      <div className="flex items-center gap-[6px] pt-[8px]">
-        {[0, 1, 2].map((i) => (
-          <motion.span
-            key={i}
-            animate={{ opacity: [0.25, 1, 0.25] }}
-            transition={{ duration: 1.1, repeat: Infinity, delay: i * 0.18 }}
-            className="w-[5px] h-[5px] rounded-full bg-fg-subtle"
-          />
-        ))}
-      </div>
-    </motion.div>
-  )
-}
-
-/* ============================================================================
- * Input bar
- * ========================================================================= */
-
-function InputBar({
-  value,
-  onChange,
-  onSend,
-  disabled,
-  subject,
-  focus,
-  onClearFocus,
-}: {
-  value: string
-  onChange: (v: string) => void
-  onSend: () => void
-  disabled: boolean
-  subject: VibeChatSubject
-  focus: VibeChatFocus | null
-  onClearFocus: () => void
-}) {
-  const placeholder = focus
-    ? `Tune ${focus.label}…`
-    : `Ask to change ${subject.name}…`
-  return (
-    <div className="shrink-0 border-t border-line bg-card px-3 pt-3 pb-3">
-      <AnimatePresence initial={false}>
-        {focus && (
-          <motion.div
-            key="focus-chip"
-            initial={{ opacity: 0, y: 4, height: 0 }}
-            animate={{ opacity: 1, y: 0, height: 'auto' }}
-            exit={{ opacity: 0, y: 4, height: 0 }}
-            transition={{ duration: 0.18 }}
-            className="overflow-hidden"
-          >
-            <div className="flex items-center gap-[6px] bg-accent-ultra border border-accent/30 rounded-[8px] pl-[9px] pr-[5px] py-[5px] mb-2">
-              <Crosshair size={11} className="text-accent shrink-0" />
-              <span className="font-mono text-[9px] font-bold text-accent uppercase tracking-wider shrink-0">
-                Focused
-              </span>
-              <span className="text-[11.5px] text-fg font-semibold truncate flex-1">
-                {focus.label}
-              </span>
-              <button
-                onClick={onClearFocus}
-                className="w-5 h-5 rounded flex items-center justify-center text-accent hover:bg-white/60 transition-colors shrink-0"
-                title="Clear focus"
-                aria-label="Clear focus"
-              >
-                <X size={11} />
-              </button>
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-      <div className="rounded-[11px] border border-line bg-bg focus-within:border-accent focus-within:bg-card transition-colors">
-        <textarea
-          value={value}
-          onChange={(e) => onChange(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter' && !e.shiftKey) {
-              e.preventDefault()
-              onSend()
-            }
-          }}
-          placeholder={placeholder}
-          rows={2}
-          className="w-full resize-none bg-transparent px-3 pt-[9px] pb-1 text-[13px] text-fg placeholder:text-fg-subtle outline-none leading-[1.5]"
-        />
-        <div className="flex items-center justify-between px-2 pb-2">
-          <div className="flex items-center gap-1">
-            <button
-              className="h-6 px-[7px] rounded-[6px] text-fg-subtle hover:text-fg hover:bg-line-soft text-[11px] font-medium flex items-center gap-[5px] transition-colors"
-              title="Attach context"
-            >
-              <Paperclip size={11} /> context
-            </button>
-            <button
-              className="h-6 px-[7px] rounded-[6px] text-fg-subtle hover:text-fg hover:bg-line-soft text-[11px] font-medium flex items-center gap-[5px] transition-colors"
-              title="Capabilities"
-            >
-              <Shield size={11} /> caps
-            </button>
-          </div>
-          <button
-            onClick={onSend}
-            disabled={disabled || !value.trim()}
-            className="h-7 w-7 rounded-[7px] bg-accent text-white flex items-center justify-center disabled:opacity-40 disabled:cursor-not-allowed hover:bg-[#1d4ed8] transition-colors"
-            title="Send (Enter)"
-          >
-            <ArrowUp size={13} strokeWidth={3} />
-          </button>
-        </div>
-      </div>
-      <div className="flex items-center justify-between mt-2 px-1 font-mono text-[10px] text-fg-subtle">
-        <span className="flex items-center gap-1">
-          <Zap size={10} className="text-accent" />
-          every change is sandboxed + audited
-        </span>
-        <span>⏎ send · ⇧⏎ newline</span>
-      </div>
-    </div>
-  )
-}
-
-/* ============================================================================
- * Helpers
- * ========================================================================= */
-
-function renderInlineMarkdown(text: string) {
-  // Tiny inline renderer: supports **bold** and `code`. Avoids pulling a markdown dep.
-  const parts: (string | JSX.Element)[] = []
-  const regex = /(\*\*[^*]+\*\*|`[^`]+`)/g
-  let lastIndex = 0
-  let match: RegExpExecArray | null
-  let key = 0
-  while ((match = regex.exec(text)) !== null) {
-    if (match.index > lastIndex) {
-      parts.push(text.slice(lastIndex, match.index))
-    }
-    const token = match[0]
-    if (token.startsWith('**')) {
-      parts.push(
-        <strong key={key++} className="font-bold text-fg">
-          {token.slice(2, -2)}
-        </strong>,
-      )
-    } else {
-      parts.push(
-        <code
-          key={key++}
-          className="font-mono text-[11.5px] px-[5px] py-[1px] bg-line-soft text-fg rounded border border-line"
-        >
-          {token.slice(1, -1)}
-        </code>,
-      )
-    }
-    lastIndex = regex.lastIndex
-  }
-  if (lastIndex < text.length) parts.push(text.slice(lastIndex))
-  return parts
 }
 
 function buildInitialMessages(subject: VibeChatSubject): Message[] {

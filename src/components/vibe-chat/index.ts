@@ -4,6 +4,5 @@ export {
   type VibeChatSubject,
   type VibeChatFocus,
 } from './VibeChatContext'
-export { VibeChatPanel } from './VibeChatPanel'
+export { VibeChatPanel, VibeChatElementPicker } from './VibeChatPanel'
 export { VibeChatTrigger } from './VibeChatTrigger'
-export { ElementPicker } from './ElementPicker'

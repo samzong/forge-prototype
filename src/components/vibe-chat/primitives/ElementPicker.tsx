@@ -1,15 +1,22 @@
 import { useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { Crosshair, X } from 'lucide-react'
-import { useVibeChat } from './VibeChatContext'
 
-type Rect = { top: number; left: number; width: number; height: number }
-
-type Hit = {
+export type PickerHit = {
   target: string
   label: string
   path?: string
-  rect: Rect
+}
+
+type Rect = { top: number; left: number; width: number; height: number }
+
+type HitWithRect = PickerHit & { rect: Rect }
+
+interface Props {
+  active: boolean
+  onPick: (hit: PickerHit) => void
+  onCancel: () => void
+  rootSelector?: string
 }
 
 function rectFromEl(el: Element): Rect {
@@ -17,25 +24,34 @@ function rectFromEl(el: Element): Rect {
   return { top: r.top, left: r.left, width: r.width, height: r.height }
 }
 
-function findHit(x: number, y: number): Hit | null {
+function findHit(
+  x: number,
+  y: number,
+  rootSelector: string | undefined,
+): HitWithRect | null {
   const el = document.elementFromPoint(x, y)
   if (!el) return null
   if (el.closest('[data-vibe-ignore]')) return null
+
+  const root = rootSelector ? document.querySelector(rootSelector) : null
+  if (rootSelector && (!root || !root.contains(el))) return null
+
   const match = el.closest<HTMLElement>('[data-vibe-target]')
   if (!match) return null
+  if (root && !root.contains(match)) return null
+
   const target = match.dataset.vibeTarget ?? ''
   const label = match.dataset.vibeLabel ?? target
   const path = match.dataset.vibePath
   return { target, label, path, rect: rectFromEl(match) }
 }
 
-export function ElementPicker() {
-  const { pickerActive, stopPicker, setFocus, subject, open } = useVibeChat()
-  const [hit, setHit] = useState<Hit | null>(null)
+export function ElementPicker({ active, onPick, onCancel, rootSelector }: Props) {
+  const [hit, setHit] = useState<HitWithRect | null>(null)
   const armedRef = useRef(false)
 
   useEffect(() => {
-    if (!pickerActive) {
+    if (!active) {
       setHit(null)
       armedRef.current = false
       return
@@ -46,28 +62,26 @@ export function ElementPicker() {
     }, 0)
 
     const onMove = (e: MouseEvent) => {
-      setHit(findHit(e.clientX, e.clientY))
+      setHit(findHit(e.clientX, e.clientY, rootSelector))
     }
 
     const onClick = (e: MouseEvent) => {
       if (!armedRef.current) return
       e.preventDefault()
       e.stopPropagation()
-      const h = findHit(e.clientX, e.clientY)
+      const h = findHit(e.clientX, e.clientY, rootSelector)
       if (!h) {
-        stopPicker()
+        onCancel()
         return
       }
-      setFocus({ target: h.target, label: h.label, path: h.path })
-      stopPicker()
-      if (subject) open(subject)
+      onPick({ target: h.target, label: h.label, path: h.path })
     }
 
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
         e.preventDefault()
         e.stopPropagation()
-        stopPicker()
+        onCancel()
       }
     }
 
@@ -96,9 +110,9 @@ export function ElementPicker() {
       window.removeEventListener('scroll', onScrollOrResize, true)
       window.removeEventListener('resize', onScrollOrResize, true)
     }
-  }, [pickerActive, stopPicker, setFocus, subject, open])
+  }, [active, onPick, onCancel, rootSelector])
 
-  if (!pickerActive) return null
+  if (!active) return null
 
   return createPortal(
     <div
@@ -117,7 +131,7 @@ export function ElementPicker() {
           <button
             onClick={(e) => {
               e.stopPropagation()
-              stopPicker()
+              onCancel()
             }}
             className="ml-1 w-5 h-5 rounded hover:bg-white/10 flex items-center justify-center"
             aria-label="Cancel picker"
