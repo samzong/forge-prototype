@@ -36,7 +36,7 @@ export default function VersionDetailPage() {
       <EmptyState
         message="Version not found"
         ctaLabel="← Back to app"
-        onCta={() => navigate(id ? `/apps/${id}?tab=versions` : '/')}
+        onCta={() => navigate(id ? `/apps/${id}/manage?tab=versions` : '/')}
         className="p-8"
       />
     )
@@ -56,7 +56,7 @@ export default function VersionDetailPage() {
     setRollbackError(null)
     try {
       await rollbackToVersion(id, version.id)
-      navigate(`/apps/${id}?tab=versions`)
+      navigate(`/apps/${id}/manage?tab=versions`)
     } catch (e) {
       setRollbackError(e instanceof Error ? e.message : String(e))
     } finally {
@@ -73,7 +73,7 @@ export default function VersionDetailPage() {
     >
       <div className="px-8 pt-7 pb-5 bg-card border-b border-line">
         <Link
-          to={`/apps/${app.id}?tab=versions`}
+          to={`/apps/${app.id}/manage?tab=versions`}
           className="text-fg-muted hover:text-fg text-sm mb-3 font-medium flex items-center gap-[6px] transition-colors"
         >
           <ArrowLeft size={14} /> {app.name} · Versions

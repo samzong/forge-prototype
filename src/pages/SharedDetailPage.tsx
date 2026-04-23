@@ -63,7 +63,7 @@ export default function SharedDetailPage() {
         actorId: user.id,
         newName: `${app.name} (Mine)`,
       })
-      navigate(`/apps/${newApp.id}?tab=settings`)
+      navigate(`/apps/${newApp.id}/manage?tab=settings`)
     } catch (e) {
       setErr(e instanceof Error ? e : new Error(String(e)))
     } finally {

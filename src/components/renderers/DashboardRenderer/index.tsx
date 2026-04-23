@@ -428,7 +428,7 @@ export function DashboardRenderer() {
   const pushAudit = (row: AuditRow) => setAudit((prev) => [row, ...prev])
 
   return (
-    <div className="px-8 py-6 max-w-[1300px] mx-auto">
+    <div className="px-6 py-5">
       <CockpitHeader />
 
       {/* Hero strip */}

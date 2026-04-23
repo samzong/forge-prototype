@@ -1,6 +1,5 @@
 export type TabName =
   | 'overview'
-  | 'preview'
   | 'code'
   | 'manifest'
   | 'executions'
@@ -11,7 +10,6 @@ export type TabName =
 
 export const TABS: Array<{ id: TabName; label: string }> = [
   { id: 'overview', label: 'Overview' },
-  { id: 'preview', label: 'Preview' },
   { id: 'code', label: 'Code' },
   { id: 'manifest', label: 'Manifest' },
   { id: 'executions', label: 'Executions' },
@@ -21,7 +19,7 @@ export const TABS: Array<{ id: TabName; label: string }> = [
   { id: 'settings', label: 'Settings' },
 ]
 
-export const DEFAULT_TAB: TabName = 'preview'
+export const DEFAULT_TAB: TabName = 'overview'
 
 const ALL: Set<string> = new Set(TABS.map((t) => t.id))
 

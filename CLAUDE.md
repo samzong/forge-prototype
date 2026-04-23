@@ -17,6 +17,74 @@ explicitly **out of scope**. No HTTP clients, no service-interface
 indirection, no "real backend" adapter layer. The mock is the data layer —
 full stop. If the urge to abstract appears, stop. It's a prototype.
 
+## North Star
+
+> 我最终想要的效果，不是一个周末项目，而是会决定我们公司接下来 10 年
+> 以及整个应用软件开发范式出现革命性变化的重要产品定义，重要程度不低
+> 于 ChatGPT 的问世。
+
+This is not a skunkworks demo. Every page, interaction, and data model is
+a claim about how enterprise software will be built and used for the next
+decade. Ship accordingly. **No workarounds, no throwaway UI, no "good
+enough for now."** If a proposed implementation is a workaround, stop and
+redesign — even if it means scrapping work already in flight.
+
+## Core Positioning
+
+**Forge collapses "using software" and "building software" into the same
+surface.** A business user inside a host system (DCE / CRM / HR) describes
+an outcome in one sentence; Forge produces a running, signed,
+policy-bound micro-application that the user **uses**, not reviews.
+
+- The app **is** the UI. It is not a configuration page about an app.
+- Management / audit / versions are **second-class surfaces**, reserved
+  for occasional inspection. They do not get equal billing with "using
+  the app."
+- Every interaction — create, fix, evolve — is conversational. Forms and
+  tabs are fallbacks, not the path.
+- Build ↔ use is a continuous loop. A user noticing "this should also do
+  X" while using their app must be one sentence away from X being true.
+
+## Decision Filter
+
+Every feature proposal must answer: **"Does this tighten the use ↔ build
+loop, or loosen it?"** If it loosens the loop, cut it. If it is orthogonal
+to the loop (generic SaaS admin / settings / audit plumbing), it lives in
+a second-class surface and must not distract from the primary one.
+
+Reject these smells aggressively:
+- "Let's add a tab for X" when X is not a daily action
+- "Configure X before you can use the app" onboarding friction
+- "Go to settings to change X" instead of "say what you want changed"
+- Any IDE-shaped UI (file tree / tab bar / inspector panes) presented as
+  the primary way to interact with an app
+
+## Surface Architecture
+
+Every app lives in three distinct surfaces. They are **not** tabs in the
+same shell — they are separate routes with different shapes:
+
+| Surface | Route | When | Shape |
+|---|---|---|---|
+| **Use** | `/apps/:id` | User owns the app; opens it to use it | Full-screen app itself (viewKind renderer). No tab bar. A small "Manage" entry lives in the corner. |
+| **Install** | `/marketplace/:id`, `/shared/:id` (pre-install) | User does not yet own the app | Preview + capability review + "Install / Subscribe / Fork" CTA. |
+| **Manage** | `/apps/:id/manage[?tab=…]` | User is maintaining / configuring / auditing | Tab shell: overview, code, manifest, executions, versions, logs, audit, settings. |
+
+Hard rules:
+1. **Never put the Use Surface inside a tab.** If a user's daily
+   interaction requires clicking a tab to reach the thing they came for,
+   the IA is wrong.
+2. **`/apps/:id` renders the app, not metadata about the app.** The
+   viewKind renderer is the page body.
+3. **Manage is opt-in.** The entry point is a small icon / menu on the
+   Use Surface — not a persistent tab bar.
+4. **Install → Use transition**: once a user installs / subscribes /
+   forks, subsequent opens go straight to `/apps/:id` (Use). The Install
+   Surface never re-appears for owned apps.
+5. **Deep links respect the surface.** A shared link to a specific
+   execution or version is a Manage-Surface link (`/apps/:id/manage?tab=…`
+   or `/apps/:id/executions/:eid`), not a Use-Surface hijack.
+
 ## Stack
 
 - Vite 5 + React 18 + TypeScript (strict)

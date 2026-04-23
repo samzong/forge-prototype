@@ -81,7 +81,7 @@ export default function MarketplaceDetailPage() {
     setErr(null)
     try {
       const newApp = await forkApp({ sourceAppId: app.id, actorId: user.id })
-      navigate(`/apps/${newApp.id}?tab=settings`)
+      navigate(`/apps/${newApp.id}/manage?tab=settings`)
     } catch (e) {
       setErr(e instanceof Error ? e : new Error(String(e)))
     } finally {

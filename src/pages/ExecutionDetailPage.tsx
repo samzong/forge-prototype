@@ -40,7 +40,7 @@ export default function ExecutionDetailPage() {
       <EmptyState
         message="Execution not found"
         ctaLabel="← Back to app"
-        onCta={() => navigate(id ? `/apps/${id}?tab=executions` : '/')}
+        onCta={() => navigate(id ? `/apps/${id}/manage?tab=executions` : '/')}
         className="p-8"
       />
     )
@@ -58,7 +58,7 @@ export default function ExecutionDetailPage() {
     >
       <div className="px-8 pt-7 pb-5 bg-card border-b border-line">
         <Link
-          to={`/apps/${app.id}?tab=executions`}
+          to={`/apps/${app.id}/manage?tab=executions`}
           className="text-fg-muted hover:text-fg text-sm mb-3 font-medium flex items-center gap-[6px] transition-colors"
         >
           <ArrowLeft size={14} /> {app.name} · Executions
