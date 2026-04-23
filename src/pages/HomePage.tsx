@@ -11,7 +11,7 @@ export default function HomePage() {
   const handleSatellite = (hint: string) => {
     setPrompt(hint)
     requestAnimationFrame(() => {
-      const input = document.getElementById('prompt-input') as HTMLInputElement | null
+      const input = document.getElementById('prompt-input') as HTMLTextAreaElement | null
       if (input) {
         input.focus()
         input.setSelectionRange(hint.length, hint.length)
@@ -26,7 +26,7 @@ export default function HomePage() {
   }
 
   return (
-    <div className="min-h-full flex items-center justify-center px-6 py-8">
+    <div className="min-h-full flex items-start justify-center px-6 pt-[4vh] pb-12">
       <motion.div
         initial={{ opacity: 0, y: 16 }}
         animate={{ opacity: 1, y: 0 }}
@@ -35,7 +35,7 @@ export default function HomePage() {
       >
         <Galaxy onSatelliteClick={handleSatellite} />
 
-        <div className="text-center -mt-4 mb-[18px]">
+        <div className="text-center -mt-10 mb-[14px]">
           <div className="flex items-center gap-[10px] justify-center font-mono text-[11px] font-semibold text-fg-subtle uppercase tracking-[0.14em] mb-3">
             <span className="w-6 h-px bg-line" />
             Click a node · or describe what you need
