@@ -73,7 +73,10 @@ export function WorkbenchPreview({ draft, spec, historical }: Props) {
 function PreviewBody({ spec }: { spec: SpecSnapshot }) {
   return (
     <>
-      <div className="bg-card border border-line rounded-[14px] p-6 shadow-[0_12px_40px_-18px_rgba(0,0,0,0.08)]">
+      <div
+        data-vibe-root="workbench-preview"
+        className="bg-card border border-line rounded-[14px] p-6 shadow-[0_12px_40px_-18px_rgba(0,0,0,0.08)]"
+      >
         <div className="flex items-start gap-3 mb-4">
           <div className="w-10 h-10 bg-accent-ultra text-accent border border-accent/20 rounded-[10px] flex items-center justify-center font-mono text-[13px] font-extrabold shrink-0">
             ◆
@@ -191,21 +194,45 @@ function SpecField({
   )
 }
 
-const PLACEHOLDER_BLOCKS: Record<AppViewKind, string[]> = {
-  dashboard: ['Headline metric', 'Trend chart', 'Breakdown table'],
-  notifier: ['Trigger', 'Condition', 'Message card'],
-  report: ['Executive summary', 'Section: this week', 'Section: open items'],
-  form: ['Field: title', 'Field: details', 'Submit action'],
-  bot: ['System prompt', 'Allowed tools', 'Example turn'],
+type PlaceholderBlock = { target: string; label: string }
+
+const PLACEHOLDER_BLOCKS: Record<AppViewKind, PlaceholderBlock[]> = {
+  dashboard: [
+    { target: 'headline-metric', label: 'Headline metric' },
+    { target: 'trend-chart', label: 'Trend chart' },
+    { target: 'breakdown-table', label: 'Breakdown table' },
+  ],
+  notifier: [
+    { target: 'trigger', label: 'Trigger' },
+    { target: 'condition', label: 'Condition' },
+    { target: 'message-card', label: 'Message card' },
+  ],
+  report: [
+    { target: 'executive-summary', label: 'Executive summary' },
+    { target: 'section-this-week', label: 'Section: this week' },
+    { target: 'section-open-items', label: 'Section: open items' },
+  ],
+  form: [
+    { target: 'field-title', label: 'Field: title' },
+    { target: 'field-details', label: 'Field: details' },
+    { target: 'submit-action', label: 'Submit action' },
+  ],
+  bot: [
+    { target: 'system-prompt', label: 'System prompt' },
+    { target: 'allowed-tools', label: 'Allowed tools' },
+    { target: 'example-turn', label: 'Example turn' },
+  ],
 }
 
 function PlaceholderCanvas({ viewKind }: { viewKind: AppViewKind }) {
   const items = PLACEHOLDER_BLOCKS[viewKind]
   return (
     <div className="mt-2 grid grid-cols-1 gap-2">
-      {items.map((label, i) => (
+      {items.map(({ target, label }, i) => (
         <div
-          key={i}
+          key={target}
+          data-vibe-target={target}
+          data-vibe-label={label}
           className="border border-dashed border-line rounded-[10px] bg-bg px-4 py-5 flex items-center gap-3"
         >
           <span className="font-mono text-[11px] font-bold text-fg-subtle tabular-nums">

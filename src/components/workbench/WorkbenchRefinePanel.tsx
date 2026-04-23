@@ -1,11 +1,18 @@
 import { useRef, useState } from 'react'
-import { Sparkles, Zap } from 'lucide-react'
+import { Crosshair, Sparkles, Zap } from 'lucide-react'
 import type { SpecDraft, RefineTurn } from '@/types'
 import { ChatBubble } from '@/components/vibe-chat/primitives/ChatBubble'
 import { ChatInputShell } from '@/components/vibe-chat/primitives/ChatInputShell'
+import {
+  ElementPicker,
+  type PickerHit,
+} from '@/components/vibe-chat/primitives/ElementPicker'
+import { FocusChip } from '@/components/vibe-chat/primitives/FocusChip'
 import { ThinkingDots } from '@/components/vibe-chat/primitives/ThinkingDots'
 import { renderInlineMarkdown } from '@/components/vibe-chat/primitives/inlineMarkdown'
 import { useAutoScrollToBottom } from '@/components/vibe-chat/primitives/useAutoScrollToBottom'
+
+const PREVIEW_ROOT_SELECTOR = '[data-vibe-root="workbench-preview"]'
 
 interface Props {
   draft: SpecDraft
@@ -15,6 +22,8 @@ interface Props {
 
 export function WorkbenchRefinePanel({ draft, onSend, pending }: Props) {
   const [input, setInput] = useState('')
+  const [pickerActive, setPickerActive] = useState(false)
+  const [focus, setFocus] = useState<PickerHit | null>(null)
   const scrollRef = useRef<HTMLDivElement>(null)
 
   useAutoScrollToBottom(scrollRef, [draft.turns.length, pending])
@@ -24,7 +33,12 @@ export function WorkbenchRefinePanel({ draft, onSend, pending }: Props) {
     if (!text || pending) return
     onSend(text)
     setInput('')
+    setFocus(null)
   }
+
+  const placeholder = focus
+    ? `Tune ${focus.label}…`
+    : 'Refine the draft… e.g. only send when there are more than 3 critical alerts'
 
   return (
     <div className="h-full flex flex-col bg-card border-r border-line">
@@ -34,6 +48,19 @@ export function WorkbenchRefinePanel({ draft, onSend, pending }: Props) {
           Vibe Chat
         </span>
         <span className="font-mono text-[10px] text-fg-subtle">· refine</span>
+        <button
+          onClick={() => setPickerActive((v) => !v)}
+          title="Pick a block in the preview"
+          aria-label="Pick preview block"
+          aria-pressed={pickerActive}
+          className={`ml-auto w-7 h-7 rounded-[7px] flex items-center justify-center transition-colors ${
+            pickerActive
+              ? 'bg-accent text-white'
+              : 'text-fg-muted hover:bg-line-soft hover:text-accent'
+          }`}
+        >
+          <Crosshair size={13} />
+        </button>
       </div>
 
       <div
@@ -51,13 +78,29 @@ export function WorkbenchRefinePanel({ draft, onSend, pending }: Props) {
         onChange={setInput}
         onSend={handleSend}
         disabled={pending}
-        placeholder="Refine the draft… e.g. only send when there are more than 3 critical alerts"
+        placeholder={placeholder}
+        topSlot={
+          <FocusChip
+            focus={focus ? { label: focus.label } : null}
+            onClear={() => setFocus(null)}
+          />
+        }
         footerHint={
           <span className="flex items-center gap-1">
             <Zap size={10} className="text-accent" />
             each turn becomes a version
           </span>
         }
+      />
+
+      <ElementPicker
+        active={pickerActive}
+        rootSelector={PREVIEW_ROOT_SELECTOR}
+        onPick={(hit) => {
+          setFocus(hit)
+          setPickerActive(false)
+        }}
+        onCancel={() => setPickerActive(false)}
       />
     </div>
   )
