@@ -6,6 +6,22 @@ import { usersSeed, CURRENT_USER_ID } from './seed/users'
 
 const store = createStore<User>(usersSeed)
 
+const ACTIVE_USER_STORAGE_KEY = 'forge.activeUserId'
+export const ACTIVE_USER_CHANGED_EVENT = 'forge:activeUserChanged'
+
+function readInitialActiveUserId(): string {
+  if (typeof window === 'undefined') return CURRENT_USER_ID
+  try {
+    const stored = window.localStorage.getItem(ACTIVE_USER_STORAGE_KEY)
+    if (stored && store.get(stored)) return stored
+  } catch {
+    // localStorage unavailable
+  }
+  return CURRENT_USER_ID
+}
+
+let activeUserId = readInitialActiveUserId()
+
 export interface UserQuery {
   page?: number
   size?: number
@@ -30,9 +46,27 @@ export async function getCurrentUser(): Promise<User> {
   await jitter()
   const err = shouldInject('users', 'getCurrent')
   if (err) throw err
-  const u = store.get(CURRENT_USER_ID)
-  if (!u) throw new Error(`getCurrentUser: seed user "${CURRENT_USER_ID}" missing`)
+  const u = store.get(activeUserId)
+  if (!u) throw new Error(`getCurrentUser: active user "${activeUserId}" missing`)
   return u
+}
+
+export function getActiveUserId(): string {
+  return activeUserId
+}
+
+export function setActiveUserId(id: string): void {
+  if (!store.get(id)) throw new Error(`setActiveUserId: user "${id}" not found`)
+  if (id === activeUserId) return
+  activeUserId = id
+  if (typeof window !== 'undefined') {
+    try {
+      window.localStorage.setItem(ACTIVE_USER_STORAGE_KEY, id)
+    } catch {
+      // ignore
+    }
+    window.dispatchEvent(new CustomEvent(ACTIVE_USER_CHANGED_EVENT))
+  }
 }
 
 export async function getUser(id: string): Promise<User | null> {

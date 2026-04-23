@@ -1,10 +1,24 @@
+import { useEffect, useRef, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
-import { Plus, Store, ChevronRight, Settings, LogOut, Users2, Shield } from 'lucide-react'
-import { motion } from 'framer-motion'
+import {
+  Plus,
+  Store,
+  ChevronRight,
+  Settings,
+  LogOut,
+  Users2,
+  Shield,
+  Check,
+  ChevronUp,
+} from 'lucide-react'
+import { motion, AnimatePresence } from 'framer-motion'
 import { useApps } from '@/hooks/useApps'
 import { useSessions } from '@/hooks/useSessions'
 import { useCurrentUser } from '@/hooks/useCurrentUser'
-import { App, SessionStatus } from '@/types'
+import { useUsers } from '@/hooks/useUsers'
+import { useTeams } from '@/hooks/useTeams'
+import { setActiveUserId } from '@/mock/users'
+import { App, SessionStatus, type User, type Team } from '@/types'
 import { RelativeTime } from '@/components/RelativeTime'
 
 interface Props {
@@ -151,51 +165,213 @@ export function Sidebar({ onClose }: Props) {
         </div>
       </div>
 
-      <div className="border-t border-line px-3 py-[14px] shrink-0">
-        <div className="flex items-center gap-[11px] px-[7px]">
-          <div
-            className="w-9 h-9 rounded-full flex items-center justify-center text-white font-mono text-[12px] font-bold shrink-0"
-            style={{ background: 'linear-gradient(135deg, #a78bfa, #2563eb)' }}
-          >
-            SZ
-          </div>
-          <div className="flex-1 min-w-0">
-            <div className="text-[13px] font-semibold text-fg truncate">samzong</div>
-            <div className="font-mono text-[10px] text-fg-subtle truncate">platform-team · admin</div>
-          </div>
-          <button
-            aria-label="Team"
-            onClick={() => go('/team')}
-            className="w-[30px] h-[30px] rounded-[7px] flex items-center justify-center text-fg-subtle hover:bg-line-soft hover:text-fg-muted transition-colors"
-          >
-            <Users2 size={15} />
-          </button>
-          {isAdmin && (
-            <button
-              aria-label="Admin console"
-              onClick={() => go('/admin')}
-              className="w-[30px] h-[30px] rounded-[7px] flex items-center justify-center text-fg-subtle hover:bg-line-soft hover:text-fg-muted transition-colors"
-            >
-              <Shield size={15} />
-            </button>
-          )}
-          <button
-            aria-label="Settings"
-            onClick={() => go('/settings')}
-            className="w-[30px] h-[30px] rounded-[7px] flex items-center justify-center text-fg-subtle hover:bg-line-soft hover:text-fg-muted transition-colors"
-          >
-            <Settings size={15} />
-          </button>
-          <button
-            aria-label="Sign out"
-            className="w-[30px] h-[30px] rounded-[7px] flex items-center justify-center text-fg-subtle hover:bg-line-soft hover:text-fg-muted transition-colors"
-          >
-            <LogOut size={15} />
-          </button>
-        </div>
-      </div>
+      <UserSwitcherFooter
+        me={me ?? null}
+        isAdmin={isAdmin}
+        onNav={go}
+      />
     </aside>
   )
+}
+
+function UserSwitcherFooter({
+  me,
+  isAdmin,
+  onNav,
+}: {
+  me: User | null
+  isAdmin: boolean
+  onNav: (path: string) => void
+}) {
+  const [open, setOpen] = useState(false)
+  const popRef = useRef<HTMLDivElement>(null)
+  const triggerRef = useRef<HTMLButtonElement>(null)
+
+  const { data: usersRes } = useUsers()
+  const { data: teamsRes } = useTeams()
+  const users = usersRes?.items ?? []
+  const teams = teamsRes?.items ?? []
+
+  useEffect(() => {
+    if (!open) return
+    const onDoc = (e: MouseEvent) => {
+      const t = e.target as Node
+      if (popRef.current?.contains(t)) return
+      if (triggerRef.current?.contains(t)) return
+      setOpen(false)
+    }
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setOpen(false)
+    }
+    document.addEventListener('mousedown', onDoc)
+    document.addEventListener('keydown', onKey)
+    return () => {
+      document.removeEventListener('mousedown', onDoc)
+      document.removeEventListener('keydown', onKey)
+    }
+  }, [open])
+
+  const teamLabel = me ? teamNameFor(teams, me.primaryTeamId) : ''
+  const roleLabel = me ? primaryRole(me) : ''
+
+  const switchTo = (id: string) => {
+    if (!me || id === me.id) {
+      setOpen(false)
+      return
+    }
+    setActiveUserId(id)
+    setOpen(false)
+  }
+
+  return (
+    <div className="border-t border-line px-3 py-[14px] shrink-0 relative">
+      <div className="flex items-center gap-[11px] px-[7px]">
+        <button
+          ref={triggerRef}
+          onClick={() => setOpen((v) => !v)}
+          aria-haspopup="menu"
+          aria-expanded={open}
+          className="flex items-center gap-[11px] flex-1 min-w-0 rounded-[9px] px-[3px] py-[3px] -mx-[3px] hover:bg-line-soft transition-colors text-left"
+        >
+          <div
+            className="w-9 h-9 rounded-full flex items-center justify-center text-white font-mono text-[12px] font-bold shrink-0"
+            style={{ background: avatarGradient(me?.id) }}
+          >
+            {me ? initials(me.displayName) : '–'}
+          </div>
+          <div className="flex-1 min-w-0">
+            <div className="text-[13px] font-semibold text-fg truncate flex items-center gap-[6px]">
+              {me?.username ?? '…'}
+              <span className="font-mono text-[9px] font-bold uppercase tracking-[0.08em] text-fg-subtle border border-line rounded-[3px] px-[4px] py-[1px]">
+                DEV
+              </span>
+            </div>
+            <div className="font-mono text-[10px] text-fg-subtle truncate">
+              {teamLabel ? `${teamLabel} · ${roleLabel}` : roleLabel || '—'}
+            </div>
+          </div>
+          <ChevronUp
+            size={14}
+            className={`text-fg-subtle shrink-0 transition-transform ${open ? '' : 'rotate-180'}`}
+          />
+        </button>
+        <button
+          aria-label="Team"
+          onClick={() => onNav('/team')}
+          className="w-[30px] h-[30px] rounded-[7px] flex items-center justify-center text-fg-subtle hover:bg-line-soft hover:text-fg-muted transition-colors"
+        >
+          <Users2 size={15} />
+        </button>
+        {isAdmin && (
+          <button
+            aria-label="Admin console"
+            onClick={() => onNav('/admin')}
+            className="w-[30px] h-[30px] rounded-[7px] flex items-center justify-center text-fg-subtle hover:bg-line-soft hover:text-fg-muted transition-colors"
+          >
+            <Shield size={15} />
+          </button>
+        )}
+        <button
+          aria-label="Settings"
+          onClick={() => onNav('/settings')}
+          className="w-[30px] h-[30px] rounded-[7px] flex items-center justify-center text-fg-subtle hover:bg-line-soft hover:text-fg-muted transition-colors"
+        >
+          <Settings size={15} />
+        </button>
+        <button
+          aria-label="Sign out"
+          className="w-[30px] h-[30px] rounded-[7px] flex items-center justify-center text-fg-subtle hover:bg-line-soft hover:text-fg-muted transition-colors"
+        >
+          <LogOut size={15} />
+        </button>
+      </div>
+
+      <AnimatePresence>
+        {open && (
+          <motion.div
+            ref={popRef}
+            initial={{ opacity: 0, y: 6 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 6 }}
+            transition={{ duration: 0.14 }}
+            role="menu"
+            className="absolute left-3 right-3 bottom-[68px] z-20 bg-card border border-line rounded-[10px] shadow-[0_12px_32px_rgba(0,0,0,0.12)] overflow-hidden"
+          >
+            <div className="px-3 pt-[10px] pb-[6px] font-mono text-[10px] uppercase tracking-[0.1em] text-fg-subtle">
+              Switch identity
+            </div>
+            <div className="max-h-[280px] overflow-y-auto scrollbar-thin">
+              {users.map((u) => {
+                const active = u.id === me?.id
+                return (
+                  <button
+                    key={u.id}
+                    role="menuitem"
+                    onClick={() => switchTo(u.id)}
+                    className={`w-full text-left flex items-center gap-[10px] px-3 py-[9px] transition-colors ${
+                      active ? 'bg-accent-ultra' : 'hover:bg-line-soft'
+                    }`}
+                  >
+                    <div
+                      className="w-[28px] h-[28px] rounded-full flex items-center justify-center text-white font-mono text-[10px] font-bold shrink-0"
+                      style={{ background: avatarGradient(u.id) }}
+                    >
+                      {initials(u.displayName)}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className={`text-[12.5px] truncate ${active ? 'text-accent font-bold' : 'text-fg font-medium'}`}>
+                        {u.displayName}
+                      </div>
+                      <div className="font-mono text-[10px] text-fg-subtle truncate">
+                        {teamNameFor(teams, u.primaryTeamId)} · {primaryRole(u)}
+                      </div>
+                    </div>
+                    {active && <Check size={14} className="text-accent shrink-0" />}
+                  </button>
+                )
+              })}
+            </div>
+            <div className="px-3 py-[8px] border-t border-line font-mono text-[10px] text-fg-subtle leading-[1.5]">
+              Prototype-only. Persists in localStorage; reload keeps choice.
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  )
+}
+
+function initials(name: string): string {
+  const parts = name.trim().split(/\s+/).filter(Boolean)
+  if (parts.length === 0) return '?'
+  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase()
+  return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase()
+}
+
+function avatarGradient(userId: string | undefined): string {
+  switch (userId) {
+    case 'u-samzong':
+      return 'linear-gradient(135deg, #a78bfa, #2563eb)'
+    case 'u-marcus':
+      return 'linear-gradient(135deg, #f59e0b, #ef4444)'
+    case 'u-leah':
+      return 'linear-gradient(135deg, #10b981, #0ea5e9)'
+    case 'u-sasha':
+      return 'linear-gradient(135deg, #ec4899, #8b5cf6)'
+    default:
+      return 'linear-gradient(135deg, #94a3b8, #475569)'
+  }
+}
+
+function teamNameFor(teams: Team[], id: string | undefined): string {
+  if (!id) return ''
+  return teams.find((t) => t.id === id)?.name ?? id
+}
+
+function primaryRole(u: User): string {
+  if (u.roles.includes('admin')) return 'admin'
+  if (u.roles.includes('team-manager')) return 'team-manager'
+  return u.roles[0] ?? 'user'
 }
 
 function SidebarGroup({
