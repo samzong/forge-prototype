@@ -21,7 +21,7 @@ export const TABS: Array<{ id: TabName; label: string }> = [
   { id: 'settings', label: 'Settings' },
 ]
 
-export const DEFAULT_TAB: TabName = 'overview'
+export const DEFAULT_TAB: TabName = 'preview'
 
 const ALL: Set<string> = new Set(TABS.map((t) => t.id))
 

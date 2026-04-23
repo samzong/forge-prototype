@@ -10,13 +10,7 @@ import {
   FileText,
   History,
   X,
-  Download,
-  FlaskConical,
-  Star,
-  Users,
-  Shield,
   Zap,
-  Circle,
 } from 'lucide-react'
 import { useApp } from '@/hooks/useApps'
 import { App } from '@/types'
@@ -35,7 +29,7 @@ import { PreviewTab } from './app-detail/PreviewTab'
 import { SettingsTab } from './app-detail/SettingsTab'
 import { AuditTab } from './app-detail/AuditTab'
 import { DEFAULT_TAB, type TabName, isTab } from './app-detail/tabs'
-import { InfoPanel, RunningPulse } from './app-detail/shared'
+import { RunningPulse } from './app-detail/shared'
 
 function subjectFromApp(app: App): VibeChatSubject {
   return {
@@ -190,222 +184,6 @@ function TabContent({ tab, app }: { tab: TabName; app: App }) {
 }
 
 /* ============================================================================
- * INSTALL VIEW — Marketplace app 的详情/安装视图
- * ========================================================================= */
-
-function InstallView({ app }: { app: App }) {
-  const navigate = useNavigate()
-  const [installing, setInstalling] = useState(false)
-
-  return (
-    <motion.div
-      initial={{ opacity: 0, y: 12 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.35 }}
-      className="min-h-full"
-    >
-      <div className="px-8 pt-7 pb-5 bg-card border-b border-line">
-        <button
-          onClick={() => navigate('/marketplace')}
-          className="text-fg-muted hover:text-fg text-sm mb-4 font-medium flex items-center gap-[6px] transition-colors"
-        >
-          <ArrowLeft size={14} /> Back to Marketplace
-        </button>
-        <div className="flex items-start justify-between gap-6 flex-wrap">
-          <div className="flex items-start gap-4">
-            <div className="w-[56px] h-[56px] bg-gradient-to-br from-[#6366f1] to-accent text-white rounded-[12px] flex items-center justify-center font-mono text-[17px] font-extrabold shrink-0">
-              {app.icon}
-            </div>
-            <div>
-              <div className="flex items-center gap-3 flex-wrap">
-                <h1 className="text-[22px] font-extrabold text-fg tracking-tight leading-tight">
-                  {app.name}
-                </h1>
-                <span className="font-mono text-[11px] px-2 py-[3px] bg-bg border border-line rounded text-fg-muted font-semibold">
-                  {app.currentVersion}
-                </span>
-                {app.source === 'dce-official' && (
-                  <span className="font-mono text-[10px] px-[7px] py-[2px] bg-accent-ultra text-accent border border-accent/20 rounded font-bold uppercase tracking-wider">
-                    Official
-                  </span>
-                )}
-              </div>
-              <div className="flex items-center gap-4 mt-[6px] text-[12px] text-fg-muted">
-                <div className="flex items-center gap-[5px]">
-                  <Star size={12} className="text-[#f59e0b] fill-[#f59e0b]" />
-                  <span className="font-mono font-semibold">
-                    {app.stars && app.stars >= 1000 ? `${(app.stars / 1000).toFixed(1)}k` : app.stars}
-                  </span>
-                </div>
-                <div>by {app.source === 'dce-official' ? 'DCE Team' : 'community'}</div>
-                <div className="flex items-center gap-[5px]">
-                  <Users size={12} /> 127 teams using
-                </div>
-              </div>
-            </div>
-          </div>
-          <div className="flex items-center gap-2">
-            <button className="px-[14px] py-[9px] bg-card border border-line rounded-[9px] text-[13px] font-semibold text-fg-muted hover:border-accent hover:text-accent flex items-center gap-[6px] transition-colors">
-              <FlaskConical size={14} /> Try in Sandbox
-            </button>
-            <button
-              onClick={() => {
-                setInstalling(true)
-                setTimeout(() => navigate(`/apps/${app.id}`), 1100)
-              }}
-              className="px-5 py-[9px] bg-accent text-white rounded-[9px] text-[13px] font-semibold flex items-center gap-[6px] hover:bg-[#1d4ed8] transition-colors disabled:opacity-70"
-              disabled={installing}
-            >
-              <Download size={14} /> {installing ? 'Installing...' : 'Install'}
-            </button>
-          </div>
-        </div>
-      </div>
-
-      <div className="px-8 py-6 grid gap-5" style={{ gridTemplateColumns: '1fr 340px' }}>
-        <div className="space-y-5">
-          {/* Description */}
-          <div className="bg-card border border-line rounded-[12px] p-6">
-            <div className="font-mono text-[11px] font-bold text-fg-muted uppercase tracking-[0.1em] mb-3">
-              About
-            </div>
-            <div className="text-[14px] text-fg leading-[1.65]">{app.description}</div>
-          </div>
-
-          {/* Screenshot preview */}
-          <div className="bg-[#0a0a0a] rounded-[12px] p-[14px] border border-line">
-            <div className="aspect-[16/9] bg-gradient-to-br from-[#1a1a2e] via-[#16213e] to-[#0f172a] rounded-[8px] flex items-center justify-center relative overflow-hidden">
-              <div
-                className="absolute inset-0 opacity-40"
-                style={{
-                  backgroundImage:
-                    'radial-gradient(circle at 30% 40%, rgba(37,99,235,0.35), transparent 50%), radial-gradient(circle at 70% 60%, rgba(139,92,246,0.3), transparent 50%)',
-                }}
-              />
-              <div className="relative text-center">
-                <div className="font-mono text-[11px] uppercase tracking-[0.2em] text-white/40 mb-2">
-                  Live Preview
-                </div>
-                <div className="text-white/85 text-[15px] font-semibold">{app.name}</div>
-                <div className="text-white/50 text-[11px] font-mono mt-1">
-                  [ {app.icon.toLowerCase()}.preview · mock snapshot ]
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* How it works */}
-          <div className="bg-card border border-line rounded-[12px] p-6">
-            <div className="font-mono text-[11px] font-bold text-fg-muted uppercase tracking-[0.1em] mb-4">
-              How It Works
-            </div>
-            <div className="space-y-4">
-              <HowStep n={1} title="Install with one click">
-                Forge resolves capabilities and provisions an isolated runtime identity per team.
-              </HowStep>
-              <HowStep n={2} title="Runs under your permissions">
-                App inherits your exact access boundary. It can never see data you cannot.
-              </HowStep>
-              <HowStep n={3} title="Audited end to end">
-                Every invocation is logged with prompt, capability calls, and output hash.
-              </HowStep>
-            </div>
-          </div>
-
-          {/* Code preview */}
-          <div className="bg-[#0a0a0a] rounded-[12px] p-5 font-mono text-[12px]">
-            <div className="flex items-center gap-2 text-white/40 text-[10px] mb-3 uppercase tracking-wider font-semibold">
-              <Code2 size={12} /> Source preview · read only
-            </div>
-            <CodePreviewStatic />
-          </div>
-        </div>
-
-        {/* Right sidebar */}
-        <div className="space-y-4">
-          <InfoPanel title="Required Capabilities" icon={<Shield size={12} />}>
-            <div className="space-y-[6px] mt-1">
-              {app.capabilities.map((c) => (
-                <div key={c} className="flex items-center gap-2">
-                  <Circle size={8} className="text-[#10b981] fill-[#10b981]" />
-                  <span className="font-mono text-[11px] text-fg">{c}</span>
-                </div>
-              ))}
-            </div>
-            <div className="mt-3 pt-3 border-t border-line text-[11px] text-fg-muted leading-[1.5]">
-              All capabilities will be granted under <span className="font-mono">runtime_identity: invoker</span>.
-            </div>
-          </InfoPanel>
-
-          <InfoPanel title="Cost Estimate">
-            <div className="flex items-baseline gap-2">
-              <span className="text-[18px] font-extrabold text-fg">$0.16</span>
-              <span className="text-[11px] text-fg-subtle">/mo avg</span>
-            </div>
-            <div className="font-mono text-[10px] text-fg-subtle mt-[3px]">
-              $0.04/run × ~4 runs/mo
-            </div>
-          </InfoPanel>
-
-          <InfoPanel title="Data Retention">
-            <div className="text-[12px] text-fg font-medium">none</div>
-            <div className="font-mono text-[10px] text-fg-subtle mt-[3px]">
-              output streamed, not persisted
-            </div>
-          </InfoPanel>
-
-          <InfoPanel title="Version History" icon={<History size={12} />}>
-            <div className="space-y-2">
-              {[
-                { v: app.currentVersion, d: 'latest', n: 'Stable' },
-                { v: 'v2.0', d: '1 month ago', n: 'Dep bump' },
-                { v: 'v1.5', d: '3 months ago', n: 'Bug fix' },
-              ].map((it) => (
-                <div key={it.v} className="flex items-center gap-2 text-[11px]">
-                  <span className="font-mono font-bold text-accent w-[36px]">{it.v}</span>
-                  <span className="font-mono text-fg-subtle w-[68px]">{it.d}</span>
-                  <span className="text-fg-muted">{it.n}</span>
-                </div>
-              ))}
-            </div>
-          </InfoPanel>
-        </div>
-      </div>
-
-      <AnimatePresence>
-        {installing && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black/40 flex items-center justify-center z-50"
-          >
-            <motion.div
-              initial={{ scale: 0.9, y: 12 }}
-              animate={{ scale: 1, y: 0 }}
-              className="bg-card rounded-[14px] px-8 py-6 shadow-2xl flex items-center gap-4"
-            >
-              <motion.div
-                animate={{ rotate: 360 }}
-                transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
-              >
-                <Download size={22} className="text-accent" />
-              </motion.div>
-              <div>
-                <div className="font-semibold text-fg">Installing {app.name}...</div>
-                <div className="font-mono text-[11px] text-fg-subtle mt-1">
-                  Provisioning runtime identity
-                </div>
-              </div>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-    </motion.div>
-  )
-}
-
-/* ============================================================================
  * SOURCE DRAWER — 点击 </> 从右侧滑出，装代码/manifest/版本
  * ========================================================================= */
 
@@ -490,52 +268,6 @@ function SourceDrawer({ app, open, onClose }: { app: App; open: boolean; onClose
 /* ============================================================================
  * Shared pieces
  * ========================================================================= */
-
-function HowStep({ n, title, children }: { n: number; title: string; children: ReactNode }) {
-  return (
-    <div className="flex gap-3">
-      <div className="w-7 h-7 rounded-full bg-accent-ultra text-accent font-mono text-[12px] font-extrabold flex items-center justify-center shrink-0 border border-accent/20">
-        {n}
-      </div>
-      <div className="flex-1">
-        <div className="text-[13px] font-bold text-fg">{title}</div>
-        <div className="text-[12px] text-fg-muted leading-[1.55] mt-[2px]">{children}</div>
-      </div>
-    </div>
-  )
-}
-
-function CodePreviewStatic() {
-  const lines = [
-    '# handler.ts · read-only preview',
-    'export async function run(ctx) {',
-    "  const prs = await ctx.cli('github.pulls.list', {",
-    "    repo: ctx.params.repo,",
-    "    state: 'open',",
-    '  })',
-    '  for (const pr of prs) {',
-    "    await ctx.cli('github.reviews.create', {",
-    '      pr: pr.id,',
-    '      body: await ctx.llm.review(pr.diff),',
-    '    })',
-    '  }',
-    '}',
-  ]
-  return (
-    <div className="space-y-[2px]">
-      {lines.map((l, i) => (
-        <div key={i} className="flex">
-          <span className="text-white/25 select-none w-8 text-right pr-3">{i + 1}</span>
-          <span
-            className={`whitespace-pre ${l.startsWith('#') ? 'text-white/45' : 'text-white'}`}
-          >
-            {l || '\u00A0'}
-          </span>
-        </div>
-      ))}
-    </div>
-  )
-}
 
 function DrawerTab({
   active,
