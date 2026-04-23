@@ -1,10 +1,10 @@
 import { useState } from 'react'
 import { Navigate, useNavigate, useParams, Link } from 'react-router-dom'
 import { motion } from 'framer-motion'
-import { ArrowLeft, Pause, Play, Settings2, Zap } from 'lucide-react'
+import { ArrowLeft, Crosshair, Pause, Play, Settings2, Zap } from 'lucide-react'
 import { useApp } from '@/hooks/useApps'
 import type { App } from '@/types'
-import { VibeChatTrigger, type VibeChatSubject } from '@/components/vibe-chat'
+import { VibeChatTrigger, useVibeChat, type VibeChatSubject } from '@/components/vibe-chat'
 import { LoadingState } from '@/components/state/LoadingState'
 import { EmptyState } from '@/components/state/EmptyState'
 import { ErrorState } from '@/components/state/ErrorState'
@@ -50,6 +50,8 @@ export default function AppUsePage() {
 function UseSurface({ app }: { app: App }) {
   const navigate = useNavigate()
   const [running, setRunning] = useState(app.status === 'running')
+  const { startPicker, pickerActive } = useVibeChat()
+  const subject = subjectFromApp(app)
 
   return (
     <motion.div
@@ -89,8 +91,21 @@ function UseSurface({ app }: { app: App }) {
             {running ? <Pause size={11} /> : <Play size={11} />}
             {running ? 'Pause' : 'Resume'}
           </button>
+          <button
+            onClick={() => startPicker(subject)}
+            title="Pick a module to focus the chat"
+            aria-label="Pick element"
+            aria-pressed={pickerActive}
+            className={`w-7 h-7 rounded-[7px] border flex items-center justify-center transition-colors ${
+              pickerActive
+                ? 'bg-accent border-accent text-white'
+                : 'bg-card border-line text-fg-muted hover:border-accent hover:text-accent'
+            }`}
+          >
+            <Crosshair size={12} />
+          </button>
           <VibeChatTrigger
-            subject={subjectFromApp(app)}
+            subject={subject}
             variant="primary"
             label="Chat to edit"
             className="!px-[11px] !py-0 !h-7 !text-[11.5px] !rounded-[7px]"

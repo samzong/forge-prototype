@@ -3,6 +3,7 @@ import { AnimatePresence, motion } from 'framer-motion'
 import {
   ArrowUp,
   Bot,
+  Crosshair,
   Paperclip,
   Plus,
   Shield,
@@ -11,7 +12,7 @@ import {
   X,
   Zap,
 } from 'lucide-react'
-import { useVibeChat, type VibeChatSubject } from './VibeChatContext'
+import { useVibeChat, type VibeChatFocus, type VibeChatSubject } from './VibeChatContext'
 
 type Role = 'user' | 'assistant'
 
@@ -40,7 +41,7 @@ type Message = {
 }
 
 export function VibeChatPanel() {
-  const { isOpen, subject, close } = useVibeChat()
+  const { isOpen, subject, close, focus, clearFocus, startPicker } = useVibeChat()
 
   useEffect(() => {
     if (!isOpen) return
@@ -72,8 +73,12 @@ export function VibeChatPanel() {
             transition={{ type: 'spring', stiffness: 340, damping: 36 }}
             className="fixed left-0 top-14 bottom-0 w-[400px] z-40 bg-card border-r border-line shadow-[8px_0_24px_rgba(0,0,0,0.08)] flex flex-col"
           >
-            <PanelHeader subject={subject} onClose={close} />
-            <ChatBody subject={subject} />
+            <PanelHeader
+              subject={subject}
+              onClose={close}
+              onPick={() => startPicker(subject)}
+            />
+            <ChatBody subject={subject} focus={focus} onClearFocus={clearFocus} />
           </motion.aside>
         </>
       )}
@@ -85,7 +90,15 @@ export function VibeChatPanel() {
  * Header
  * ========================================================================= */
 
-function PanelHeader({ subject, onClose }: { subject: VibeChatSubject; onClose: () => void }) {
+function PanelHeader({
+  subject,
+  onClose,
+  onPick,
+}: {
+  subject: VibeChatSubject
+  onClose: () => void
+  onPick: () => void
+}) {
   return (
     <div className="shrink-0 border-b border-line">
       <div className="flex items-center justify-between px-4 h-[44px]">
@@ -97,6 +110,13 @@ function PanelHeader({ subject, onClose }: { subject: VibeChatSubject; onClose: 
           <span className="font-mono text-[10px] text-fg-subtle">· agent</span>
         </div>
         <div className="flex items-center gap-1">
+          <button
+            onClick={onPick}
+            className="w-7 h-7 rounded-[7px] flex items-center justify-center text-fg-muted hover:bg-line-soft hover:text-accent transition-colors"
+            title="Pick a module in the app"
+          >
+            <Crosshair size={13} />
+          </button>
           <button
             className="w-7 h-7 rounded-[7px] flex items-center justify-center text-fg-muted hover:bg-line-soft transition-colors"
             title="New chat"
@@ -138,7 +158,15 @@ function PanelHeader({ subject, onClose }: { subject: VibeChatSubject; onClose: 
  * Body (messages + input)
  * ========================================================================= */
 
-function ChatBody({ subject }: { subject: VibeChatSubject }) {
+function ChatBody({
+  subject,
+  focus,
+  onClearFocus,
+}: {
+  subject: VibeChatSubject
+  focus: VibeChatFocus | null
+  onClearFocus: () => void
+}) {
   const initialMessages = useMemo(() => buildInitialMessages(subject), [subject.id, subject.type])
   const [messages, setMessages] = useState<Message[]>(initialMessages)
   const [input, setInput] = useState('')
@@ -210,6 +238,8 @@ function ChatBody({ subject }: { subject: VibeChatSubject }) {
         onSend={handleSend}
         disabled={thinking}
         subject={subject}
+        focus={focus}
+        onClearFocus={onClearFocus}
       />
     </>
   )
@@ -335,15 +365,52 @@ function InputBar({
   onSend,
   disabled,
   subject,
+  focus,
+  onClearFocus,
 }: {
   value: string
   onChange: (v: string) => void
   onSend: () => void
   disabled: boolean
   subject: VibeChatSubject
+  focus: VibeChatFocus | null
+  onClearFocus: () => void
 }) {
+  const placeholder = focus
+    ? `Tune ${focus.label}…`
+    : `Ask to change ${subject.name}…`
   return (
     <div className="shrink-0 border-t border-line bg-card px-3 pt-3 pb-3">
+      <AnimatePresence initial={false}>
+        {focus && (
+          <motion.div
+            key="focus-chip"
+            initial={{ opacity: 0, y: 4, height: 0 }}
+            animate={{ opacity: 1, y: 0, height: 'auto' }}
+            exit={{ opacity: 0, y: 4, height: 0 }}
+            transition={{ duration: 0.18 }}
+            className="overflow-hidden"
+          >
+            <div className="flex items-center gap-[6px] bg-accent-ultra border border-accent/30 rounded-[8px] pl-[9px] pr-[5px] py-[5px] mb-2">
+              <Crosshair size={11} className="text-accent shrink-0" />
+              <span className="font-mono text-[9px] font-bold text-accent uppercase tracking-wider shrink-0">
+                Focused
+              </span>
+              <span className="text-[11.5px] text-fg font-semibold truncate flex-1">
+                {focus.label}
+              </span>
+              <button
+                onClick={onClearFocus}
+                className="w-5 h-5 rounded flex items-center justify-center text-accent hover:bg-white/60 transition-colors shrink-0"
+                title="Clear focus"
+                aria-label="Clear focus"
+              >
+                <X size={11} />
+              </button>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
       <div className="rounded-[11px] border border-line bg-bg focus-within:border-accent focus-within:bg-card transition-colors">
         <textarea
           value={value}
@@ -354,7 +421,7 @@ function InputBar({
               onSend()
             }
           }}
-          placeholder={`Ask to change ${subject.name}…`}
+          placeholder={placeholder}
           rows={2}
           className="w-full resize-none bg-transparent px-3 pt-[9px] pb-1 text-[13px] text-fg placeholder:text-fg-subtle outline-none leading-[1.5]"
         />

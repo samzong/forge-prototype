@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
 import { TopBar } from './TopBar'
 import { Sidebar } from './Sidebar'
-import { VibeChatProvider, VibeChatPanel } from '@/components/vibe-chat'
+import { VibeChatProvider, VibeChatPanel, ElementPicker } from '@/components/vibe-chat'
 
 export default function Layout() {
   const [sidebarOpen, setSidebarOpen] = useState(false)
@@ -25,6 +25,7 @@ export default function Layout() {
           <Outlet />
         </main>
         <VibeChatPanel />
+        <ElementPicker />
 
         <AnimatePresence>
           {sidebarOpen && (

@@ -64,7 +64,11 @@ function UnrenderedSurface({ app }: { app: App }) {
   const Icon = copy.icon
   return (
     <div className="px-8 py-14 flex items-start justify-center">
-      <div className="max-w-[640px] w-full bg-card border border-line rounded-[14px] p-10 text-center">
+      <div
+        className="max-w-[640px] w-full bg-card border border-line rounded-[14px] p-10 text-center"
+        data-vibe-target="unrendered-surface"
+        data-vibe-label={`${copy.eyebrow} placeholder`}
+      >
         <div className="inline-flex items-center justify-center w-14 h-14 rounded-[13px] bg-accent/10 text-accent mb-6">
           <Icon size={24} strokeWidth={1.8} />
         </div>

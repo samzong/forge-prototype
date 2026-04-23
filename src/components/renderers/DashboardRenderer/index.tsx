@@ -429,10 +429,16 @@ export function DashboardRenderer() {
 
   return (
     <div className="px-6 py-5">
-      <CockpitHeader />
+      <div data-vibe-target="header" data-vibe-label="Cockpit header">
+        <CockpitHeader />
+      </div>
 
       {/* Hero strip */}
-      <div className="mt-5 grid grid-cols-3 md:grid-cols-6 gap-3">
+      <div
+        className="mt-5 grid grid-cols-3 md:grid-cols-6 gap-3"
+        data-vibe-target="hero-strip"
+        data-vibe-label="KPI hero strip"
+      >
         {(Object.keys(HERO) as Array<keyof typeof HERO>).map((k) => (
           <HeroCard
             key={k}
@@ -447,20 +453,28 @@ export function DashboardRenderer() {
 
       {/* Customers × Downstream */}
       <div className="mt-5 grid gap-4 xl:grid-cols-5">
-        <div className="xl:col-span-3">
+        <div
+          className="xl:col-span-3"
+          data-vibe-target="contracts"
+          data-vibe-label="Enterprise contracts list"
+        >
           <ContractsList
             customers={filteredCustomers}
             filter={filter}
             onFilterChange={setFilter}
           />
         </div>
-        <div className="xl:col-span-2">
+        <div
+          className="xl:col-span-2"
+          data-vibe-target="downstream"
+          data-vibe-label="Downstream platforms (C-end)"
+        >
           <DownstreamPanel />
         </div>
       </div>
 
       {/* Today's call queue */}
-      <div className="mt-4">
+      <div className="mt-4" data-vibe-target="todos" data-vibe-label="Today's call queue">
         <TodoQueue
           todos={TODOS_INIT}
           doneMap={todoDone}
@@ -470,43 +484,71 @@ export function DashboardRenderer() {
       </div>
 
       {/* Internal consumption */}
-      <div className="mt-6">
+      <div
+        className="mt-6"
+        data-vibe-target="internal-banner"
+        data-vibe-label="Internal consumption summary"
+      >
         <InternalConsumerBanner />
       </div>
       <div className="mt-3 grid gap-4 xl:grid-cols-5">
-        <div className="xl:col-span-3 grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <div
+          className="xl:col-span-3 grid grid-cols-1 sm:grid-cols-2 gap-3"
+          data-vibe-target="internal-employees"
+          data-vibe-label="Internal top employees"
+        >
           {INTERNAL_EMPLOYEES.map((e) => (
             <InternalEmployeeCardView key={e.id} emp={e} />
           ))}
         </div>
-        <div className="xl:col-span-2">
+        <div
+          className="xl:col-span-2"
+          data-vibe-target="team-rank"
+          data-vibe-label="Internal team ranking"
+        >
           <InternalTeamRank />
         </div>
       </div>
-      <div className="mt-3">
+      <div className="mt-3" data-vibe-target="dept-demand" data-vibe-label="Department demand">
         <DeptDemandPanel />
       </div>
 
       {/* FinOps */}
       <SectionHeader className="mt-8" kicker="FinOps" title="Economic surface — 24h" />
-      <div className="mt-3 grid grid-cols-2 md:grid-cols-4 gap-3">
+      <div
+        className="mt-3 grid grid-cols-2 md:grid-cols-4 gap-3"
+        data-vibe-target="finops-supply"
+        data-vibe-label="FinOps supply cards"
+      >
         {FINOPS_SUPPL.map((c, i) => (
           <FinOpsCardView key={i} card={c} />
         ))}
       </div>
       <div className="mt-4 grid gap-4 lg:grid-cols-5">
-        <div className="lg:col-span-3">
+        <div
+          className="lg:col-span-3"
+          data-vibe-target="three-line"
+          data-vibe-label="Traffic lines chart"
+        >
           <ThreeLineChart />
         </div>
-        <div className="lg:col-span-2">
+        <div className="lg:col-span-2" data-vibe-target="roi" data-vibe-label="ROI breakdown">
           <RoiList />
         </div>
       </div>
       <div className="mt-4 grid gap-4 lg:grid-cols-5">
-        <div className="lg:col-span-3">
+        <div
+          className="lg:col-span-3"
+          data-vibe-target="waterfall"
+          data-vibe-label="Waterfall chart"
+        >
           <WaterfallChart />
         </div>
-        <div className="lg:col-span-2">
+        <div
+          className="lg:col-span-2"
+          data-vibe-target="what-if"
+          data-vibe-label="What-if simulator"
+        >
           <WhatIfPanel
             pricing={pricing}
             setPricing={setPricing}
@@ -520,43 +562,55 @@ export function DashboardRenderer() {
           />
         </div>
       </div>
-      <div className="mt-4">
+      <div className="mt-4" data-vibe-target="supply" data-vibe-label="Supply & inventory">
         <SupplyView />
       </div>
 
       {/* Command Room */}
       <SectionHeader className="mt-8" kicker="Command Room" title="Levers · impact · audit" />
       <div className="mt-3 grid gap-4 lg:grid-cols-3">
-        <div className="lg:col-span-1">
+        <div
+          className="lg:col-span-1"
+          data-vibe-target="clusters"
+          data-vibe-label="Cluster overview"
+        >
           <ClusterOverview />
         </div>
-        <div className="lg:col-span-2">
+        <div
+          className="lg:col-span-2"
+          data-vibe-target="factory-alerts"
+          data-vibe-label="Factory alerts"
+        >
           <FactoryAlerts />
         </div>
       </div>
-      <div className="mt-4">
+      <div className="mt-4" data-vibe-target="war-room" data-vibe-label="War room · active policies">
         <WarRoom policies={policies} onRevoke={revokePolicy} />
       </div>
       <div className="mt-4 grid gap-4 lg:grid-cols-2">
-        <LeversPanel selected={lever} onSelect={setLever} />
-        <ImpactPreview
-          reason={reason}
-          onReasonChange={setReason}
-          onExecute={() => {
-            if (!reason.trim()) return
-            pushAudit({
-              time: new Date().toTimeString().slice(0, 5),
-              who: 'Zhang',
-              what: 'Policy draft executed',
-              impact: '1 tenant',
-              ok: true,
-              rollback: true,
-            })
-            setReason('')
-          }}
-        />
+        <div data-vibe-target="levers" data-vibe-label="Levers panel">
+          <LeversPanel selected={lever} onSelect={setLever} />
+        </div>
+        <div data-vibe-target="impact" data-vibe-label="Impact preview">
+          <ImpactPreview
+            reason={reason}
+            onReasonChange={setReason}
+            onExecute={() => {
+              if (!reason.trim()) return
+              pushAudit({
+                time: new Date().toTimeString().slice(0, 5),
+                who: 'Zhang',
+                what: 'Policy draft executed',
+                impact: '1 tenant',
+                ok: true,
+                rollback: true,
+              })
+              setReason('')
+            }}
+          />
+        </div>
       </div>
-      <div className="mt-4">
+      <div className="mt-4" data-vibe-target="audit" data-vibe-label="Audit feed">
         <AuditFeed audit={audit} />
       </div>
     </div>
