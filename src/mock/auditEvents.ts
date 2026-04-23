@@ -10,6 +10,7 @@ export interface AuditEventQuery {
   page?: number
   size?: number
   appId?: string
+  teamId?: string
   action?: AuditEvent['action']
   actorId?: string
   sort?: 'createdAt-desc' | 'createdAt-asc'
@@ -21,6 +22,7 @@ function buildListQuery(q: AuditEventQuery = {}): ListQuery<AuditEvent> {
     size: q.size,
     filter: (e) => {
       if (q.appId && e.appId !== q.appId) return false
+      if (q.teamId && e.teamId !== q.teamId) return false
       if (q.action && e.action !== q.action) return false
       if (q.actorId && e.actorId !== q.actorId) return false
       return true

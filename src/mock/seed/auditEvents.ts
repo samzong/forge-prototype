@@ -7,6 +7,7 @@ interface Row {
   action: AuditAction
   actorId?: string
   createdAt: string
+  teamId?: string
   targetVersionId?: string
   fromVersionId?: string
   note?: string
@@ -35,6 +36,7 @@ export const auditEventsSeed: AuditEvent[] = [
     appId: 'team-alert-dashboard',
     action: 'deploy',
     createdAt: daysAgo(170),
+    teamId: 'team-platform',
     targetVersionId: 'v1.0',
     note: 'Initial generation.',
   }),
@@ -51,6 +53,7 @@ export const auditEventsSeed: AuditEvent[] = [
     appId: 'team-alert-dashboard',
     action: 'deploy',
     createdAt: daysAgo(60),
+    teamId: 'team-platform',
     targetVersionId: 'v1.2',
     note: 'Cache warm + Feishu card v2.',
   }),
@@ -68,6 +71,7 @@ export const auditEventsSeed: AuditEvent[] = [
     appId: 'team-alert-dashboard',
     action: 'deploy',
     createdAt: daysAgo(40),
+    teamId: 'team-platform',
     targetVersionId: 'v1.3',
     note: 'Fix mobile card padding.',
   }),
@@ -85,6 +89,7 @@ export const auditEventsSeed: AuditEvent[] = [
     appId: 'team-alert-dashboard',
     action: 'update',
     createdAt: daysAgo(20),
+    teamId: 'team-platform',
     note: 'Updated cron from Mon 9am to Mon 8:30am.',
   }),
 
@@ -351,8 +356,9 @@ export const auditEventsSeed: AuditEvent[] = [
     appId: 'security-finding-triage',
     action: 'share',
     createdAt: daysAgo(70),
+    teamId: 'team-security',
     note: 'Shared with team: security.',
-    metadata: { targetTeamId: 'security' },
+    metadata: { targetTeamId: 'team-security' },
   }),
   mk({
     id: 'audit-041',
@@ -452,8 +458,9 @@ export const auditEventsSeed: AuditEvent[] = [
     appId: 'capacity-planner',
     action: 'share',
     createdAt: hoursAgo(30),
+    teamId: 'team-sre',
     note: 'Shared with team: sre.',
-    metadata: { targetTeamId: 'sre' },
+    metadata: { targetTeamId: 'team-sre' },
   }),
 
   // ============ jira-sync-bridge ============
@@ -478,6 +485,7 @@ export const auditEventsSeed: AuditEvent[] = [
     appId: 'team-alert-dashboard',
     action: 'update',
     createdAt: hoursAgo(6),
+    teamId: 'team-platform',
     note: 'Updated oncall chat id after infra rename.',
   }),
 ]

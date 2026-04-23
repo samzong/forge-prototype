@@ -1,5 +1,5 @@
 import { useLocation, useNavigate } from 'react-router-dom'
-import { Plus, Store, ChevronRight, Settings, LogOut } from 'lucide-react'
+import { Plus, Store, ChevronRight, Settings, LogOut, Users2 } from 'lucide-react'
 import { motion } from 'framer-motion'
 import { useApps } from '@/hooks/useApps'
 import { useSessions } from '@/hooks/useSessions'
@@ -160,6 +160,13 @@ export function Sidebar({ onClose }: Props) {
             <div className="text-[13px] font-semibold text-fg truncate">samzong</div>
             <div className="font-mono text-[10px] text-fg-subtle truncate">platform-team · admin</div>
           </div>
+          <button
+            aria-label="Team"
+            onClick={() => go('/team')}
+            className="w-[30px] h-[30px] rounded-[7px] flex items-center justify-center text-fg-subtle hover:bg-line-soft hover:text-fg-muted transition-colors"
+          >
+            <Users2 size={15} />
+          </button>
           <button
             aria-label="Settings"
             onClick={() => go('/settings')}

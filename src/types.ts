@@ -263,10 +263,37 @@ export interface AuditEvent {
   action: AuditAction
   actorId: string
   createdAt: string
+  teamId?: string
   targetVersionId?: string
   fromVersionId?: string
   note?: string
   metadata?: Record<string, unknown>
+}
+
+// ============================================================================
+// Team + Policy
+// ============================================================================
+
+export interface Team {
+  id: string
+  tenantId: string
+  name: string
+  ownerId: string
+  createdAt: string
+}
+
+export type PolicyKind = 'data' | 'egress' | 'cost'
+export type PolicyAction = 'warn' | 'block'
+
+export interface Policy {
+  id: string
+  tenantId: string
+  kind: PolicyKind
+  label: string
+  rule: string
+  action: PolicyAction
+  createdAt: string
+  updatedAt: string
 }
 
 // ============================================================================

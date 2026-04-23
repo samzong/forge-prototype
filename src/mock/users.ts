@@ -48,3 +48,15 @@ export async function listUsers(query: UserQuery = {}): Promise<ListResult<User>
   if (err) throw err
   return store.list(buildListQuery(query))
 }
+
+export async function updateUser(
+  id: string,
+  patch: Partial<Pick<User, 'teamIds' | 'primaryTeamId' | 'roles' | 'displayName'>>,
+): Promise<User> {
+  await jitter()
+  const err = shouldInject('users', 'update')
+  if (err) throw err
+  const existing = store.get(id)
+  if (!existing) throw new Error(`updateUser: id "${id}" not found`)
+  return store.update(id, patch)
+}

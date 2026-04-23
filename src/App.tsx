@@ -18,6 +18,11 @@ import SettingsTokensPage from './pages/settings/SettingsTokensPage'
 import SettingsNotificationsPage from './pages/settings/SettingsNotificationsPage'
 import SettingsCapabilitiesPage from './pages/settings/SettingsCapabilitiesPage'
 import SettingsAuditPage from './pages/settings/SettingsAuditPage'
+import TeamLayout from './pages/team/TeamLayout'
+import MembersPage from './pages/team/MembersPage'
+import PoliciesPage from './pages/team/PoliciesPage'
+import TeamAuditPage from './pages/team/AuditPage'
+import RolesPage from './pages/team/RolesPage'
 import LoginPage from './pages/auth/LoginPage'
 import OnboardingPage from './pages/auth/OnboardingPage'
 import NotFoundPage from './pages/error/NotFoundPage'
@@ -49,6 +54,13 @@ export default function App() {
           <Route path="notifications" element={<SettingsNotificationsPage />} />
           <Route path="capabilities" element={<SettingsCapabilitiesPage />} />
           <Route path="audit" element={<SettingsAuditPage />} />
+        </Route>
+        <Route path="/team" element={<TeamLayout />}>
+          <Route index element={<Navigate to="members" replace />} />
+          <Route path="members" element={<MembersPage />} />
+          <Route path="policies" element={<PoliciesPage />} />
+          <Route path="audit" element={<TeamAuditPage />} />
+          <Route path="roles" element={<RolesPage />} />
         </Route>
       </Route>
       <Route path="/login" element={<LoginPage />} />
