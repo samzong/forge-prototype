@@ -415,6 +415,35 @@ export interface DeliveryChannel {
 }
 
 // ============================================================================
+// Integration — an upstream system Forge connects to (DCE, GitHub, Feishu, …)
+// ============================================================================
+
+export type IntegrationKind =
+  | 'dce'
+  | 'crm'
+  | 'hr'
+  | 'github'
+  | 'feishu'
+  | 'webhook'
+  | 'pagerduty'
+export type IntegrationStatus = 'connected' | 'error' | 'disabled'
+
+export interface Integration {
+  id: string
+  tenantId: string
+  name: string
+  kind: IntegrationKind
+  status: IntegrationStatus
+  iconUrl?: string
+  endpoint?: string
+  note?: string
+  createdAt: string
+  updatedAt: string
+  lastCheckedAt?: string
+  lastError?: string
+}
+
+// ============================================================================
 // Satellite (UI-only, not a tenant-scoped business entity)
 // ============================================================================
 

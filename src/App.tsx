@@ -23,6 +23,12 @@ import MembersPage from './pages/team/MembersPage'
 import PoliciesPage from './pages/team/PoliciesPage'
 import TeamAuditPage from './pages/team/AuditPage'
 import RolesPage from './pages/team/RolesPage'
+import AdminLayout from './pages/admin/AdminLayout'
+import AdminAppsPage from './pages/admin/AdminAppsPage'
+import AdminCapabilitiesPage from './pages/admin/AdminCapabilitiesPage'
+import AdminIntegrationsPage from './pages/admin/AdminIntegrationsPage'
+import AdminAuditPage from './pages/admin/AdminAuditPage'
+import AdminUsersPage from './pages/admin/AdminUsersPage'
 import LoginPage from './pages/auth/LoginPage'
 import OnboardingPage from './pages/auth/OnboardingPage'
 import NotFoundPage from './pages/error/NotFoundPage'
@@ -61,6 +67,14 @@ export default function App() {
           <Route path="policies" element={<PoliciesPage />} />
           <Route path="audit" element={<TeamAuditPage />} />
           <Route path="roles" element={<RolesPage />} />
+        </Route>
+        <Route path="/admin" element={<AdminLayout />}>
+          <Route index element={<Navigate to="apps" replace />} />
+          <Route path="apps" element={<AdminAppsPage />} />
+          <Route path="capabilities" element={<AdminCapabilitiesPage />} />
+          <Route path="integrations" element={<AdminIntegrationsPage />} />
+          <Route path="audit" element={<AdminAuditPage />} />
+          <Route path="users" element={<AdminUsersPage />} />
         </Route>
       </Route>
       <Route path="/login" element={<LoginPage />} />

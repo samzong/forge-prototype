@@ -1,8 +1,9 @@
 import { useLocation, useNavigate } from 'react-router-dom'
-import { Plus, Store, ChevronRight, Settings, LogOut, Users2 } from 'lucide-react'
+import { Plus, Store, ChevronRight, Settings, LogOut, Users2, Shield } from 'lucide-react'
 import { motion } from 'framer-motion'
 import { useApps } from '@/hooks/useApps'
 import { useSessions } from '@/hooks/useSessions'
+import { useCurrentUser } from '@/hooks/useCurrentUser'
 import { App, SessionStatus } from '@/types'
 import { RelativeTime } from '@/components/RelativeTime'
 
@@ -26,11 +27,13 @@ export function Sidebar({ onClose }: Props) {
   const { data: sharedRes } = useApps({ group: 'shared' })
   const { data: marketRes } = useApps({ group: 'marketplace' })
   const { data: sessionsRes } = useSessions({ sort: 'createdAt-desc' })
+  const { data: me } = useCurrentUser()
 
   const mine = mineRes?.items ?? []
   const shared = sharedRes?.items ?? []
   const marketTotal = marketRes?.total ?? 0
   const sessions = sessionsRes?.items ?? []
+  const isAdmin = me?.roles.includes('admin') ?? false
 
   const isActive = (id: string) => location.pathname === `/apps/${id}`
 
@@ -167,6 +170,15 @@ export function Sidebar({ onClose }: Props) {
           >
             <Users2 size={15} />
           </button>
+          {isAdmin && (
+            <button
+              aria-label="Admin console"
+              onClick={() => go('/admin')}
+              className="w-[30px] h-[30px] rounded-[7px] flex items-center justify-center text-fg-subtle hover:bg-line-soft hover:text-fg-muted transition-colors"
+            >
+              <Shield size={15} />
+            </button>
+          )}
           <button
             aria-label="Settings"
             onClick={() => go('/settings')}

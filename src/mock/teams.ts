@@ -84,6 +84,7 @@ export async function deleteTeam(id: string): Promise<boolean> {
 }
 
 export async function addTeamMember(teamId: string, userId: string): Promise<User> {
+  await jitter()
   const err = shouldInject('teams', 'addMember')
   if (err) throw err
   const team = store.get(teamId)
@@ -95,6 +96,7 @@ export async function addTeamMember(teamId: string, userId: string): Promise<Use
 }
 
 export async function removeTeamMember(teamId: string, userId: string): Promise<User> {
+  await jitter()
   const err = shouldInject('teams', 'removeMember')
   if (err) throw err
   const team = store.get(teamId)
@@ -113,6 +115,7 @@ export async function changeTeamMemberRole(
   userId: string,
   role: Role,
 ): Promise<User> {
+  await jitter()
   const err = shouldInject('teams', 'changeMemberRole')
   if (err) throw err
   const user = await getUser(userId)
