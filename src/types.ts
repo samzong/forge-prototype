@@ -143,6 +143,45 @@ export interface ExecutionLog {
 }
 
 // ============================================================================
+// SpecDraft — pre-generation workbench: prompt + iterative refine turns
+// Each user turn produces a SpecSnapshot version. Publishing a draft hands
+// off to the Session pipeline (/generate/:sessionId).
+// ============================================================================
+
+export type DraftStatus = 'drafting' | 'published' | 'archived'
+
+export interface SpecSnapshot {
+  name: string
+  description: string
+  viewKind: AppViewKind
+  capabilities: string[]
+}
+
+export type RefineTurnRole = 'user' | 'assistant'
+
+export interface RefineTurn {
+  id: string
+  role: RefineTurnRole
+  content: string
+  createdAt: string
+  specSnapshot?: SpecSnapshot
+}
+
+export interface SpecDraft {
+  id: string
+  tenantId: string
+  title: string
+  initialPrompt: string
+  turns: RefineTurn[]
+  currentSpec: SpecSnapshot
+  status: DraftStatus
+  createdBy: string
+  createdAt: string
+  updatedAt: string
+  publishedSessionId?: string
+}
+
+// ============================================================================
 // Session + SessionStage
 // ============================================================================
 

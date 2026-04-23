@@ -1,6 +1,7 @@
 import { Routes, Route, Navigate } from 'react-router-dom'
 import Layout from './components/layout/Layout'
 import HomePage from './pages/HomePage'
+import DraftWorkbenchPage from './pages/DraftWorkbenchPage'
 import GeneratePage from './pages/GeneratePage'
 import AppsListPage from './pages/AppsListPage'
 import AppUsePage from './pages/AppUsePage'
@@ -42,6 +43,7 @@ export default function App() {
     <Routes>
       <Route element={<Layout />}>
         <Route path="/" element={<HomePage />} />
+        <Route path="/draft/:id" element={<DraftWorkbenchPage />} />
         <Route path="/generate" element={<GeneratePage />} />
         <Route path="/generate/:sessionId" element={<GeneratePage />} />
         <Route path="/apps" element={<AppsListPage />} />

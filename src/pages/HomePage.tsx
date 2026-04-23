@@ -3,9 +3,11 @@ import { useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { Galaxy } from '@/components/galaxy/Galaxy'
 import { PromptBox } from '@/components/prompt/PromptBox'
+import { createDraft } from '@/mock/drafts'
 
 export default function HomePage() {
   const [prompt, setPrompt] = useState('')
+  const [submitting, setSubmitting] = useState(false)
   const navigate = useNavigate()
 
   const handleSatellite = (hint: string) => {
@@ -19,10 +21,17 @@ export default function HomePage() {
     })
   }
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     const v = prompt.trim()
-    if (!v) return
-    navigate(`/generate?q=${encodeURIComponent(v)}`)
+    if (!v || submitting) return
+    setSubmitting(true)
+    try {
+      const draft = await createDraft(v)
+      navigate(`/draft/${draft.id}`)
+    } catch (e) {
+      console.error(e)
+      setSubmitting(false)
+    }
   }
 
   return (
